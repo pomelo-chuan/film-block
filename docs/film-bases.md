@@ -52,3 +52,7 @@
 ## 当前版本：固定胶片规格
 
 后续按用户简化需求改为固定规格：齿孔尺寸、圆角、间距和孔数均不再自定义，120 不提供有孔选项，移除了内框线设置。上面的 darktable 实现记录属于历史设计；当前几何与 SpektraLab 的参考边界详见 [film-geometry.md](film-geometry.md)。
+
+## Doto 点阵字体与文字记忆
+
+新增 [Doto](https://github.com/oliverlalan/Doto)，通过 @fontsource/doto 提供 Latin 400 字重，授权为 SIL OFL 1.1，随站点发布的授权文本位于 public/licenses/Doto-OFL.txt。字体不依赖外部请求，中文仍由系统字体补全。文字内容、显示开关及文字样式在本机浏览器存储，关闭文字不会删除已输入内容；关闭时格号也不绘制。

@@ -1,16 +1,16 @@
-export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; font: 'Pixelify Sans' | 'Silkscreen' | 'Press Start 2P'; fontSize: number; texture: 'smooth' | 'grain' };
-export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', font:'Pixelify Sans', fontSize:32, texture:'smooth'};
-export const fonts = ['Pixelify Sans', 'Silkscreen', 'Press Start 2P'] as const;
+export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; textEnabled: boolean; font: 'Pixelify Sans' | 'Silkscreen' | 'Press Start 2P' | 'Doto'; fontSize: number; texture: 'smooth' | 'grain' };
+export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', textEnabled:true, font:'Pixelify Sans', fontSize:32, texture:'smooth'};
+export const fonts = ['Pixelify Sans', 'Silkscreen', 'Press Start 2P', 'Doto'] as const;
 export async function loadFilmFont(font: Settings['font']) {
   await document.fonts.load(`400 24px "${font}"`);
 }
 export const presets = [
-  {name:'反相黑', color:'#171815', ink:'#dda84d', description:'负片反相扫描后常见的深色边缘'},
-  {name:'负片橙', color:'#b56532', ink:'#ffe0a3', description:'彩色负片橙色遮罩的透射观感'},
-  {name:'琥珀棕', color:'#8a482b', ink:'#f8cf80', description:'彩色负片片基的暖琥珀棕调'},
-  {name:'深棕色', color:'#493025', ink:'#efbb72', description:'较深的负片棕色风格'},
-  {name:'黑白灰', color:'#a6a6a0', ink:'#292b28', description:'黑白负片中性片基的灰色风格'},
-  {name:'透明基', color:'#e6e2d7', ink:'#55534b', description:'透明片基在浅色背景上的风格化呈现'},
+  {name:'反相黑', color:'#171815', ink:'#dda84d'},
+  {name:'负片橙', color:'#b56532', ink:'#ffe0a3'},
+  {name:'琥珀棕', color:'#8a482b', ink:'#f8cf80'},
+  {name:'深棕色', color:'#493025', ink:'#efbb72'},
+  {name:'黑白灰', color:'#a6a6a0', ink:'#292b28'},
+  {name:'透明基', color:'#e6e2d7', ink:'#55534b'},
 ];
 // Physical dimensions (mm), independently implemented from documented film geometry.
 // See docs/film-geometry.md for the SpektraLab reference and aspect-ratio policy.
@@ -65,8 +65,9 @@ export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:
   for(const hole of perforations(g,s)){
     ctx.beginPath();ctx.roundRect(hole.x,hole.y,hole.width,hole.height,hole.radius);ctx.fill();
   }
+  if(!s.textEnabled)return;
   const font=pxPerMm*1.7*s.fontSize/40, textInset=pxPerMm*(s.format==='135'?1:1.25);ctx.fillStyle=s.ink;ctx.font=`400 ${font}px "${s.font}", monospace`;ctx.textBaseline='alphabetic';
-  const label=s.text.trim() || 'FILM / ROOM';const frame=String(index+1).padStart(2,'0');
+  const label=s.text.trim();const frame=String(index+1).padStart(2,'0');
   ctx.save();
   if(vertical){ctx.translate(g.width-textInset,g.height-g.y);ctx.rotate(-Math.PI/2);}
   else ctx.translate(g.x,g.height-textInset);
