@@ -32,3 +32,19 @@
 通过 @fontsource 包提供 Latin 400 字重，构建时打包为同源 WOFF2，不依赖远程字体服务。三者均使用 SIL Open Font License 1.1，完整授权文本保存在 public/licenses/ 并随站点发布。像素字形主要覆盖拉丁字符，中文回退到系统字体。
 
 字号以边框宽度百分比定义（18–40%，默认 32%），随图片分辨率等比缩放。Canvas 预览和导出均等待所选字体加载，避免首屏和导出字形不一致。
+
+## 再次核对 darktable 的边框、图案与齿孔
+
+2026-11-03 再次读取官方文档与实现：
+
+- [framing 文档](https://github.com/darktable-org/dtdocs/blob/master/content/module-reference/processing-modules/framing.md) 和 [borders.c](https://github.com/darktable-org/darktable/blob/master/src/iop/borders.c)：模块生成纯色边框，并支持第二种颜色的内框线。内框线宽度相对最窄边框定义；偏移 0% 接触照片，100% 接触外边缘。
+- [watermark 文档](https://github.com/darktable-org/dtdocs/blob/master/content/module-reference/processing-modules/watermark.md)：SVG / PNG 图案是独立叠加层，支持缩放、透明度、位置与文字替换。它与 framing 的处理顺序会影响定位。
+- negadoctor 负责负片的颜色/密度和反相，并不会生成片基纹理或齿孔。以上模块没有内建 135 / 120 齿孔生成器，不能把本站的装饰样式称为 darktable 的胶卷模板。
+
+据此调整本站：
+
+1. 默认保持纯色片基，细颗粒纹理单独选择，仅作用于边框，固定随机种子以保证导出一致性。此纹理是本站实现，没有复制或宣称复现 darktable 算法。
+2. 增加独立颜色、宽度与偏移的内框线，借鉴 framing 的参数关系；线条完整位于照片外，不覆盖原图。
+3. 本站自己的 135 齿孔采用双侧圆角矩形、等距排列和独立文字区。默认每侧 8 孔，数量可调；高密度时等比缩小孔，保证孔不重叠。此处不是按物理毫米校准的胶片扫描模板。
+4. 120 默认无孔，允许用户主动选择有孔装饰，并在界面标明区别。
+5. 颜色仍是 sRGB 装饰近似，未将 negadoctor 的线性 Dmin 参数直接当作网页色值，也不改变用户照片的色彩。
