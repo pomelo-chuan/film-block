@@ -14,6 +14,9 @@ describe('lettering preferences', () => {
     expect(readLettering({getItem: () => '{invalid json'})).toEqual({});
     expect(readLettering({getItem: () => JSON.stringify({text: 'x'.repeat(100), textEnabled: 'false', font: 'Missing', fontSize: 500, ink: 'bad'})})).toEqual({text: 'x'.repeat(80), fontSize: 40});
   });
+  it('migrates retired Pixelify Sans to the bilingual default without losing text', () => {
+    expect(readLettering({getItem: () => '{"text":"记忆 Memory","font":"Pixelify Sans","textEnabled":false}'})).toEqual({text:'记忆 Memory',font:'Fusion Pixel 12',textEnabled:false});
+  });
   it('preserves an intentionally empty label', () => {
     expect(readLettering({getItem: () => '{"text":""}'})).toEqual({text: ''});
   });

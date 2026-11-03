@@ -25,13 +25,9 @@
 
 ## 本地开源字体
 
-- [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans)：默认字体。
-- [Silkscreen](https://github.com/googlefonts/silkscreen)：复古屏幕字体。
-- [Press Start 2P](https://github.com/codeman38/PressStart2P)：8-bit 游戏风格。
+当前可选：缝合像素 12px、缝合像素 10px、俐方体 Cubic 11、Doto、Silkscreen、Press Start 2P。默认缝合像素 12px；英文字体缺少的中文字形由同源中文像素字体补全。Pixelify Sans 已移除，旧缓存自动迁移。
 
-通过 @fontsource 包提供 Latin 400 字重，构建时打包为同源 WOFF2，不依赖远程字体服务。三者均使用 SIL Open Font License 1.1，完整授权文本保存在 public/licenses/ 并随站点发布。像素字形主要覆盖拉丁字符，中文回退到系统字体。
-
-字号为 18–40 的相对档位（默认 32），在固定文字带中随图片分辨率等比缩放。Canvas 预览和导出均等待所选字体加载，避免首屏和导出字形不一致。
+完整版本、覆盖范围、来源和授权记录见 [fonts.md](fonts.md)。预览与导出等待相同字体栈加载，字号在固定文字带中随图片分辨率等比缩放。
 
 ## darktable 调研记录（内框线及自定义齿孔现已移除）
 
@@ -55,4 +51,4 @@
 
 ## Doto 点阵字体与文字记忆
 
-新增 [Doto](https://github.com/oliverlalan/Doto)，通过 @fontsource/doto 提供 Latin 400 字重，授权为 SIL OFL 1.1，随站点发布的授权文本位于 public/licenses/Doto-OFL.txt。字体不依赖外部请求，中文仍由系统字体补全。文字内容、显示开关及文字样式在本机浏览器存储，关闭文字不会删除已输入内容；关闭时格号也不绘制。
+新增 [Doto](https://github.com/oliverlalan/Doto)，通过 @fontsource/doto 提供 Latin 400 字重，授权为 SIL OFL 1.1，随站点发布的授权文本位于 public/licenses/Doto-OFL.txt。字体不依赖外部请求，中文由缝合像素 12px 补全。文字内容、显示开关及文字样式在本机浏览器存储，关闭文字不会删除已输入内容；关闭时格号也不绘制。

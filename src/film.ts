@@ -1,9 +1,13 @@
-export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; textEnabled: boolean; font: 'Pixelify Sans' | 'Silkscreen' | 'Press Start 2P' | 'Doto'; fontSize: number; texture: 'smooth' | 'grain' };
-export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', textEnabled:true, font:'Pixelify Sans', fontSize:32, texture:'smooth'};
-export const fonts = ['Pixelify Sans', 'Silkscreen', 'Press Start 2P', 'Doto'] as const;
-export async function loadFilmFont(font: Settings['font']) {
-  await document.fonts.load(`400 24px "${font}"`);
+export const fonts = ['Fusion Pixel 12', 'Fusion Pixel 10', 'Cubic 11', 'Doto', 'Silkscreen', 'Press Start 2P'] as const;
+export const fontLabels: Record<typeof fonts[number], string> = {'Fusion Pixel 12':'缝合像素 12px','Fusion Pixel 10':'缝合像素 10px','Cubic 11':'俐方体 Cubic 11','Doto':'Doto · 点阵','Silkscreen':'Silkscreen','Press Start 2P':'Press Start 2P'};
+export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; textEnabled: boolean; font: typeof fonts[number]; fontSize: number; texture: 'smooth' | 'grain' };
+export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', textEnabled:true, font:'Fusion Pixel 12', fontSize:32, texture:'smooth'};
+export async function loadFilmFont(font: Settings['font'], text='FILM BLOCK') {
+  const sample=`${text} 中文 Aa 0123456789`;
+  await document.fonts.load(`400 24px "${font}"`,sample);
+  if(font!=='Fusion Pixel 12')await document.fonts.load('400 24px "Fusion Pixel 12"',sample);
 }
+export function fontStack(font:Settings['font']){return `"${font}", "Fusion Pixel 12", monospace`;}
 export const presets = [
   {name:'反相黑', color:'#171815', ink:'#dda84d'},
   {name:'负片橙', color:'#b56532', ink:'#ffe0a3'},
@@ -66,7 +70,7 @@ export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:
     ctx.beginPath();ctx.roundRect(hole.x,hole.y,hole.width,hole.height,hole.radius);ctx.fill();
   }
   if(!s.textEnabled)return;
-  const font=pxPerMm*1.7*s.fontSize/40, textInset=pxPerMm*(s.format==='135'?1:1.25);ctx.fillStyle=s.ink;ctx.font=`400 ${font}px "${s.font}", monospace`;ctx.textBaseline='alphabetic';
+  const font=pxPerMm*1.7*s.fontSize/40, textInset=pxPerMm*(s.format==='135'?1:1.25);ctx.fillStyle=s.ink;ctx.font=`400 ${font}px ${fontStack(s.font)}`;ctx.textBaseline='alphabetic';
   const label=s.text.trim();const frame=String(index+1).padStart(2,'0');
   ctx.save();
   if(vertical){ctx.translate(g.width-textInset,g.height-g.y);ctx.rotate(-Math.PI/2);}
