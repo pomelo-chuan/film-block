@@ -1,5 +1,5 @@
-export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; font: 'Pixelify Sans' | 'Silkscreen' | 'Press Start 2P'; fontSize: number; holes: 'round' | 'square' | 'none'; count: number; width: number; paper: string; texture: 'smooth' | 'grain'; frameSize: number; frameOffset: number; frameColor: string };
-export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', font:'Pixelify Sans', fontSize:32, holes:'round', count:8, width:10, paper:'#f7f5ef', texture:'smooth', frameSize:0, frameOffset:15, frameColor:'#a99a78'};
+export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; font: 'Pixelify Sans' | 'Silkscreen' | 'Press Start 2P'; fontSize: number; texture: 'smooth' | 'grain' };
+export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', font:'Pixelify Sans', fontSize:32, texture:'smooth'};
 export const fonts = ['Pixelify Sans', 'Silkscreen', 'Press Start 2P'] as const;
 export async function loadFilmFont(font: Settings['font']) {
   await document.fonts.load(`400 24px "${font}"`);
@@ -12,31 +12,34 @@ export const presets = [
   {name:'黑白灰', color:'#a6a6a0', ink:'#292b28', description:'黑白负片中性片基的灰色风格'},
   {name:'透明基', color:'#e6e2d7', ink:'#55534b', description:'透明片基在浅色背景上的风格化呈现'},
 ];
+// Physical dimensions (mm), independently implemented from documented film geometry.
+// See docs/film-geometry.md for the SpektraLab reference and aspect-ratio policy.
+export const FILM_SPECS = {
+  '135': {filmWidth:35, imageAcross:24, endMargin:1, holeAlong:1.98, holeAcross:2.80, holePitch:4.75, holeEdge:2, holeRadius:.5},
+  '120': {filmWidth:61, imageAcross:56, endMargin:1.7},
+} as const;
+export const SCAN_PAPER = '#f7f5ef';
 export function geometry(w:number,h:number,s:Settings){
-  const unit=Math.min(w,h), rail=unit*s.width/100, end=rail*(s.format==='120' ? .85 : .55);
+  const spec=FILM_SPECS[s.format], pxPerMm=Math.min(w,h)/spec.imageAcross;
+  const rail=(spec.filmWidth-spec.imageAcross)*pxPerMm/2, end=spec.endMargin*pxPerMm;
   const vertical=h>w;
-  return {rail,end,vertical,width:Math.round(w+2*(vertical?rail:end)),height:Math.round(h+2*(vertical?end:rail)),x:vertical?rail:end,y:vertical?end:rail};
+  return {rail,end,vertical,pxPerMm,along:Math.max(w,h)+2*end,width:Math.ceil(w+2*(vertical?rail:end)),height:Math.ceil(h+2*(vertical?end:rail)),x:vertical?rail:end,y:vertical?end:rail};
 }
-// Holes are our decorative geometry, not a darktable processing feature.
 export function perforations(g: ReturnType<typeof geometry>, s: Settings) {
-  if(s.holes === 'none') return [];
-  const length=g.vertical?g.height:g.width, inset=g.rail*.24;
-  const pitch=(length-2*inset)/s.count, ratio=s.holes==='round'?.72:1;
-  const across=Math.min(g.rail*.34,pitch*.64/ratio), along=across*ratio;
-  return Array.from({length:s.count*2},(_,i)=>{
-    const center=inset+pitch*(Math.floor(i/2)+.5), side=i%2;
-    const cross=side?(g.vertical?g.width:g.height)-g.rail*.27:g.rail*.27;
+  if(s.format==='120')return [];
+  const spec=FILM_SPECS['135'], p=g.pxPerMm;
+  const length=g.vertical?g.height:g.width, pitch=spec.holePitch*p;
+  const count=Math.max(1,Math.floor((g.along+1e-8)/pitch));
+  // Centre one shared grid on both rails without stretching its standard pitch.
+  const first=(length-(count-1)*pitch)/2;
+  const across=spec.holeAcross*p, along=spec.holeAlong*p;
+  return Array.from({length:count*2},(_,i)=>{
+    const center=first+Math.floor(i/2)*pitch, side=i%2;
+    const cross=side?(g.vertical?g.width:g.height)-(spec.holeEdge+spec.holeAcross/2)*p:(spec.holeEdge+spec.holeAcross/2)*p;
     return {x:g.vertical?cross-across/2:center-along/2,
       y:g.vertical?center-along/2:cross-across/2,
-      width:g.vertical?across:along,height:g.vertical?along:across,
-      radius:s.holes==='round'?Math.min(across,along)*.18:0};
+      width:g.vertical?across:along,height:g.vertical?along:across,radius:spec.holeRadius*p};
   });
-}
-// Keep the line entirely outside the photograph, even at maximum offset.
-export function frameLine(w:number,h:number,g:ReturnType<typeof geometry>,s:Settings){
-  const border=Math.min(g.x,g.y), size=border*s.frameSize/100;
-  const gap=(border-size)*s.frameOffset/100;
-  return {x:g.x-gap-size/2,y:g.y-gap-size/2,width:w+2*gap+size,height:h+2*gap+size,size};
 }
 function drawBaseTexture(ctx:CanvasRenderingContext2D,w:number,h:number,g:ReturnType<typeof geometry>){
   ctx.save();ctx.beginPath();ctx.rect(0,0,g.width,g.height);ctx.rect(g.x,g.y,w,h);ctx.clip('evenodd');
@@ -56,22 +59,21 @@ export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:
   const g=geometry(w,h,s); canvas.width=g.width;canvas.height=g.height;
   const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('浏览器不支持 Canvas');
   ctx.fillStyle=s.color;ctx.fillRect(0,0,g.width,g.height);ctx.drawImage(image,g.x,g.y,w,h);
-  const {rail,vertical}=g;
+  const {vertical,pxPerMm}=g;
   if(s.texture==='grain')drawBaseTexture(ctx,w,h,g);
-  if(s.frameSize>0){const line=frameLine(w,h,g,s);ctx.strokeStyle=s.frameColor;ctx.lineWidth=line.size;ctx.strokeRect(line.x,line.y,line.width,line.height);}
-  ctx.fillStyle=s.paper;
+  ctx.fillStyle=SCAN_PAPER;
   for(const hole of perforations(g,s)){
     ctx.beginPath();ctx.roundRect(hole.x,hole.y,hole.width,hole.height,hole.radius);ctx.fill();
   }
-  const font=rail*s.fontSize/100;ctx.fillStyle=s.ink;ctx.font=`400 ${font}px "${s.font}", monospace`;ctx.textBaseline='alphabetic';
+  const font=pxPerMm*1.7*s.fontSize/40, textInset=pxPerMm*(s.format==='135'?1:1.25);ctx.fillStyle=s.ink;ctx.font=`400 ${font}px "${s.font}", monospace`;ctx.textBaseline='alphabetic';
   const label=s.text.trim() || 'FILM / ROOM';const frame=String(index+1).padStart(2,'0');
   ctx.save();
-  if(vertical){ctx.translate(g.width-rail*.76,g.height-g.y);ctx.rotate(-Math.PI/2);}
-  else ctx.translate(g.x,g.height-rail*.76);
+  if(vertical){ctx.translate(g.width-textInset,g.height-g.y);ctx.rotate(-Math.PI/2);}
+  else ctx.translate(g.x,g.height-textInset);
   const available=(vertical?h:w)*.78;
   const labelMetrics=ctx.measureText(label);
   ctx.fillText(label,0,(labelMetrics.actualBoundingBoxAscent-labelMetrics.actualBoundingBoxDescent)/2,available);ctx.restore();
-  ctx.save();if(vertical){ctx.translate(rail*.76,g.y);ctx.rotate(Math.PI/2);}else ctx.translate(g.x,rail*.76);
+  ctx.save();if(vertical){ctx.translate(textInset,g.y);ctx.rotate(Math.PI/2);}else ctx.translate(g.x,textInset);
   const frameLabel=`${s.format}  ▸  ${frame} A`, frameMetrics=ctx.measureText(frameLabel);
   ctx.fillText(frameLabel,0,(frameMetrics.actualBoundingBoxAscent-frameMetrics.actualBoundingBoxDescent)/2,(vertical?h:w)*.8);ctx.restore();
 }

@@ -1,33 +1,41 @@
 import {describe,it,expect} from 'vitest';
-import {defaults,geometry,safeFilename,perforations,frameLine} from './film';
-describe('film export geometry',()=>{
- it('keeps portrait image dimensions while adding side rails',()=>{const g=geometry(1000,1500,defaults);expect(g.vertical).toBe(true);expect(g.width).toBe(1200);expect(g.height).toBe(1610);expect(g.x).toBe(100);expect(g.y).toBeCloseTo(55);});
- it('rotates rails for landscape images',()=>{const g=geometry(1500,1000,defaults);expect(g.vertical).toBe(false);expect(g.width).toBe(1610);expect(g.height).toBe(1200);});
- it('uses wider end borders for medium format without cropping',()=>{const g=geometry(1000,1000,{...defaults,format:'120'});expect(g.width-2*g.x).toBe(1000);expect(g.height-2*g.y).toBe(1000);expect(g.width).toBe(1170);});
+import {defaults,geometry,safeFilename,perforations,FILM_SPECS} from './film';
+describe('fixed film dimensions',()=>{
+ it('maps a full 135 frame to 38 × 35 mm, retaining the whole 36 × 24 image',()=>{
+  const g=geometry(3600,2400,defaults);
+  expect(g.width).toBe(3800);expect(g.height).toBe(3500);
+  expect(g.x).toBe(100);expect(g.y).toBe(550);expect(g.pxPerMm).toBe(100);
+  expect(g.width-2*g.x).toBe(3600);expect(g.height-2*g.y).toBe(2400);
+ });
+ it('rotates the same layout for portrait frames',()=>{
+  const g=geometry(2400,3600,defaults);expect(g.vertical).toBe(true);
+  expect(g.width).toBe(3500);expect(g.height).toBe(3800);
+ });
+ it('uses a 61 mm strip around a 56 mm image for 120',()=>{
+  const g=geometry(5600,5600,{...defaults,format:'120'});
+  expect(g.height).toBe(6100);expect(g.width).toBe(5940);
+  expect(g.width-2*g.x).toBe(5600);expect(g.height-2*g.y).toBe(5600);
+  expect(perforations(g,{...defaults,format:'120'})).toEqual([]);
+ });
  it('sanitizes export names',()=>expect(safeFilename('trip/photo.jpeg')).toBe('trip_photo-film.png'));
 });
-
-describe('border decorations preserve photograph and spacing',()=>{
- for(const [w,h] of [[1000,1500],[1500,1000],[1000,1000]]){
-  it(`keeps dense perforations separate and outside ${w}x${h} photograph`,()=>{
-   const s={...defaults,count:32,width:18};const g=geometry(w,h,s);const holes=perforations(g,s);
-   expect(holes).toHaveLength(64);
+describe('135 standard perforations',()=>{
+ for(const [w,h] of [[3600,2400],[2400,3600],[600,400],[400,600],[2400,2400],[6000,2400]]){
+  it(`keeps millimetre dimensions and paired pitch for ${w} × ${h}`,()=>{
+   const g=geometry(w,h,defaults),holes=perforations(g,defaults),spec=FILM_SPECS['135'];
    for(let i=0;i<holes.length;i++){
-    const p=holes[i];expect(p.x).toBeGreaterThanOrEqual(0);expect(p.y).toBeGreaterThanOrEqual(0);
+    const p=holes[i];
+    expect((g.vertical?p.width:p.height)/g.pxPerMm).toBeCloseTo(spec.holeAcross);
+    expect((g.vertical?p.height:p.width)/g.pxPerMm).toBeCloseTo(spec.holeAlong);
+    expect(p.radius/g.pxPerMm).toBeCloseTo(.5);
+    expect(p.x).toBeGreaterThanOrEqual(0);expect(p.y).toBeGreaterThanOrEqual(0);
     expect(p.x+p.width).toBeLessThanOrEqual(g.width);expect(p.y+p.height).toBeLessThanOrEqual(g.height);
     expect(p.x+p.width<=g.x||p.x>=g.x+w||p.y+p.height<=g.y||p.y>=g.y+h).toBe(true);
-    if(i>=2){const previous=holes[i-2];expect(g.vertical?p.y>=previous.y+previous.height:p.x>=previous.x+previous.width).toBe(true);}
+    if(i>=2){const q=holes[i-2];expect((g.vertical?p.y-q.y:p.x-q.x)/g.pxPerMm).toBeCloseTo(spec.holePitch);}
+    if(i%2===1){const q=holes[i-1];expect(g.vertical?p.y:p.x).toBeCloseTo(g.vertical?q.y:q.x);}
    }
-  });
-  it(`keeps frame line fully in borders of ${w}x${h} photograph`,()=>{
-   for(const frameOffset of [0,15,100]){
-    const s={...defaults,frameSize:12,frameOffset};const g=geometry(w,h,s);const line=frameLine(w,h,g,s);
-    expect(line.x-line.size/2).toBeGreaterThanOrEqual(-1e-10);
-    expect(line.y-line.size/2).toBeGreaterThanOrEqual(-1e-10);
-    expect(line.x+line.size/2).toBeLessThanOrEqual(g.x+1e-10);
-    expect(line.y+line.size/2).toBeLessThanOrEqual(g.y+1e-10);
-   }
+   const first=holes[0];expect((g.vertical?first.x:first.y)/g.pxPerMm).toBeCloseTo(spec.holeEdge);
   });
  }
- it('does not generate holes when disabled',()=>expect(perforations(geometry(1000,1000,defaults),{...defaults,format:'120',holes:'none'})).toEqual([]));
+ it('has exactly eight holes per rail in full 3:2 frames at different resolutions',()=>{for(const [w,h] of [[3600,2400],[600,400],[400,600],[300,200]])expect(perforations(geometry(w,h,defaults),defaults)).toHaveLength(16);});
 });
