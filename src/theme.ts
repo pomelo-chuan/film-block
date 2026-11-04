@@ -8,7 +8,7 @@ export function getInitialTheme(): Theme {
 export function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme=theme;
   document.documentElement.style.colorScheme=theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#171d18':'#f6f5f0');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#090909':'#f6f5f0');
 }
 export function rememberTheme(theme: Theme) {
   try {window.localStorage.setItem(THEME_KEY,theme);} catch { /* Theme still works when storage is unavailable. */ }
