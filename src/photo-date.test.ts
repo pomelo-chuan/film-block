@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {readFile} from 'node:fs/promises';
-import {parseCaptureDate,captureDateFromMetadata,formatStampDate,readCaptureDate} from './photo-date';
+import {parseCaptureDate,captureDateFromMetadata,formatStampDate,dateFormats,readCaptureDate} from './photo-date';
 import {stampLayout} from './date-stamp';
 
 describe('real photograph dates',()=>{
@@ -36,4 +36,18 @@ describe('actual JPEG metadata extraction',()=>{
  });
  for(const filename of ['modified-only.jpg','invalid-date.jpg'])it(`leaves ${filename} without a date stamp`,async()=>expect(await readCaptureDate(await readFile(new URL('./test-fixtures/'+filename,import.meta.url)))).toBeNull());
  it('does not reject uploads when metadata is corrupt or missing',async()=>expect(await readCaptureDate(new Uint8Array([255,216,0,0]))).toBeNull());
+});
+
+describe('selectable camera date formats',()=>{
+ const date=parseCaptureDate('2004:01:02 03:04:05')!;
+ it('retains leading zeroes and distinguishes day-first from month-first',()=>{
+  expect(dateFormats.map(format=>formatStampDate(date,format))).toEqual(["'04 01 02",'2004-01-02','04.01.02','02/01/2004','01/02/2004']);
+ });
+ it('keeps every date format inside landscape, portrait and square photographs',()=>{
+  for(const format of dateFormats)for(const [w,h] of [[600,400],[400,600],[600,600],[1200,200]]){
+   const layout=stampLayout(25,15,w,h,date,format);
+   expect(layout.x).toBeGreaterThan(25);expect(layout.x+layout.width).toBeLessThan(25+w);
+   expect(layout.y).toBeGreaterThan(15);expect(layout.y+layout.height).toBeLessThan(15+h);
+  }
+ });
 });

@@ -1,6 +1,8 @@
+import {dateFonts} from './date-stamp';
+import {dateFormats} from './photo-date';
 import {defaults, fonts, type Settings} from './film';
 
-type Lettering = Pick<Settings, 'text' | 'textEnabled' | 'font' | 'fontSize' | 'ink' | 'dateStampEnabled'>;
+type Lettering = Pick<Settings, 'text' | 'textEnabled' | 'font' | 'fontSize' | 'ink' | 'dateStampEnabled' | 'dateFont' | 'dateFormat'>;
 export const LETTERING_KEY = 'film-room:lettering:v1';
 
 export function readLettering(storage?: Pick<Storage, 'getItem'>): Partial<Lettering> {
@@ -9,6 +11,8 @@ export function readLettering(storage?: Pick<Storage, 'getItem'>): Partial<Lette
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
     const saved = value as Record<string, unknown>;
     const result: Partial<Lettering> = {};
+    if (dateFonts.includes(saved.dateFont as Settings['dateFont'])) result.dateFont=saved.dateFont as Settings['dateFont'];
+    if (dateFormats.includes(saved.dateFormat as Settings['dateFormat'])) result.dateFormat=saved.dateFormat as Settings['dateFormat'];
     if (typeof saved.text === 'string') result.text = saved.text.slice(0, 80);
     if (typeof saved.dateStampEnabled === 'boolean') result.dateStampEnabled = saved.dateStampEnabled;
     if (typeof saved.textEnabled === 'boolean') result.textEnabled = saved.textEnabled;
@@ -23,9 +27,9 @@ export function readLettering(storage?: Pick<Storage, 'getItem'>): Partial<Lette
 }
 
 export function saveLettering(settings: Settings, storage?: Pick<Storage, 'setItem'>): void {
-  const {text, textEnabled, font, fontSize, ink, dateStampEnabled} = settings;
+  const {text, textEnabled, font, fontSize, ink, dateStampEnabled, dateFont, dateFormat} = settings;
   try {
-    (storage ?? window.localStorage).setItem(LETTERING_KEY, JSON.stringify({text, textEnabled, font, fontSize, ink, dateStampEnabled}));
+    (storage ?? window.localStorage).setItem(LETTERING_KEY, JSON.stringify({text, textEnabled, font, fontSize, ink, dateStampEnabled, dateFont, dateFormat}));
   } catch {
     // Storage restrictions must not prevent editing or exporting photographs.
   }

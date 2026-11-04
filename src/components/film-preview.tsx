@@ -1,5 +1,5 @@
 import {useEffect,useRef} from 'react';
-import {loadFilmFont,renderFilm,type Settings} from '@/film';
+import {loadFilmFont,loadDateFont,renderFilm,type Settings} from '@/film';
 import type {CaptureDate} from '@/photo-date';
 export type Photo={id:string;name:string;image:HTMLImageElement;url:string;captureDate:CaptureDate|null;settings:Settings};
 function makeDemo(){
@@ -12,13 +12,13 @@ function makeDemo(){
  const image=new Image();image.src=c.toDataURL('image/jpeg',.92);return image;
 }
 const demo=makeDemo();
-export function Preview({photo,settings,index,large=false}:{photo?:Photo;settings:Settings;index:number;large?:boolean}){
+export function Preview({photo,settings,index}:{photo?:Photo;settings:Settings;index:number}){
  const ref=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
   let cancelled=false;const image=photo?.image??demo;
-  const draw=async()=>{if(settings.textEnabled)await loadFilmFont(settings.font,settings.text);if(!cancelled&&ref.current)renderFilm(ref.current,image,image.naturalWidth,image.naturalHeight,settings,index,large?3000:1200,photo?.captureDate??null);};
+  const draw=async()=>{if(settings.textEnabled)await loadFilmFont(settings.font,settings.text);if(photo?.captureDate)await loadDateFont(settings);if(!cancelled&&ref.current)renderFilm(ref.current,image,image.naturalWidth,image.naturalHeight,settings,index,1200,photo?.captureDate??null);};
   if(image.complete)void draw();else image.addEventListener('load',draw,{once:true});
   return()=>{cancelled=true;image.removeEventListener('load',draw);};
- },[photo,settings,index,large]);
+ },[photo,settings,index]);
  return <canvas className="film-canvas" ref={ref} aria-label={photo?`${photo.name} 的胶片边框预览`:'胶片边框示例预览'}/>;
 }

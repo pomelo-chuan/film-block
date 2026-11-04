@@ -7,7 +7,7 @@ describe('lettering preferences', () => {
     const data = new Map<string, string>();
     const storage = {getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => {data.set(key, value);}};
     saveLettering({...defaults, text: '旅行记录', textEnabled: false, font: 'Doto', fontSize: 36}, storage);
-    expect(readLettering(storage)).toEqual({text: '旅行记录', textEnabled: false, font: 'Doto', fontSize: 36, ink: defaults.ink, dateStampEnabled:true});
+    expect(readLettering(storage)).toEqual({text: '旅行记录', textEnabled: false, font: 'Doto', fontSize: 36, ink: defaults.ink, dateStampEnabled:true,dateFont:defaults.dateFont,dateFormat:defaults.dateFormat});
     expect(JSON.parse(data.get(LETTERING_KEY)!)).not.toHaveProperty('format');
   });
   it('validates damaged or outdated storage and bounds text input', () => {
@@ -20,6 +20,13 @@ describe('lettering preferences', () => {
   it('remembers the independent camera date switch', () => {
     expect(readLettering({getItem: () => '{"textEnabled":false,"dateStampEnabled":true}'})).toEqual({textEnabled:false,dateStampEnabled:true});
     expect(readLettering({getItem: () => '{"dateStampEnabled":false}'})).toEqual({dateStampEnabled:false});
+  });
+  it('validates and remembers date typography independently of border text', () => {
+    let saved='';const storage={getItem:()=>saved,setItem:(_key:string,value:string)=>{saved=value;}};
+    saveLettering({...defaults,dateFont:'Silkscreen',dateFormat:'DD/MM/YYYY',textEnabled:false},storage);
+    expect(readLettering(storage)).toMatchObject({dateFont:'Silkscreen',dateFormat:'DD/MM/YYYY',textEnabled:false});
+    expect(readLettering({getItem:()=>'{"dateFont":"missing","dateFormat":"invalid"}'})).toEqual({});
+    expect(readLettering({getItem:()=>'{"text":"旧设置"}'})).toEqual({text:'旧设置'});
   });
   it('preserves an intentionally empty label', () => {
     expect(readLettering({getItem: () => '{"text":""}'})).toEqual({text: ''});

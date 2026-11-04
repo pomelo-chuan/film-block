@@ -26,5 +26,15 @@ export async function readCaptureDate(file:Blob|Uint8Array|ArrayBuffer):Promise<
     return captureDateFromMetadata(metadata);
   }catch{return null;}
 }
-export function formatStampDate(date:CaptureDate){return `'${String(date.year%100).padStart(2,'0')} ${String(date.month).padStart(2,'0')} ${String(date.day).padStart(2,'0')}`;}
+export const dateFormats = ["'YY MM DD", 'YYYY-MM-DD', 'YY.MM.DD', 'DD/MM/YYYY', 'MM/DD/YYYY'] as const;
+export type DateFormat = typeof dateFormats[number];
+export function formatStampDate(date:CaptureDate,format:DateFormat="'YY MM DD"){
+ const yyyy=String(date.year).padStart(4,'0'),yy=yyyy.slice(-2),mm=String(date.month).padStart(2,'0'),dd=String(date.day).padStart(2,'0');
+ switch(format){
+  case 'YYYY-MM-DD':return `${yyyy}-${mm}-${dd}`;
+  case 'YY.MM.DD':return `${yy}.${mm}.${dd}`;
+  case 'DD/MM/YYYY':return `${dd}/${mm}/${yyyy}`;
+  case 'MM/DD/YYYY':return `${mm}/${dd}/${yyyy}`;
+ }
+ return `'${String(date.year%100).padStart(2,'0')} ${String(date.month).padStart(2,'0')} ${String(date.day).padStart(2,'0')}`;}
 export function formatCaptureDate(date:CaptureDate){return `${String(date.year).padStart(4,'0')}-${String(date.month).padStart(2,'0')}-${String(date.day).padStart(2,'0')}`;}
