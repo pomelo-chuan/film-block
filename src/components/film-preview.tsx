@@ -1,6 +1,7 @@
 import {useEffect,useRef} from 'react';
 import {loadFilmFont,renderFilm,type Settings} from '@/film';
-export type Photo={id:string;name:string;image:HTMLImageElement;url:string;settings:Settings};
+import type {CaptureDate} from '@/photo-date';
+export type Photo={id:string;name:string;image:HTMLImageElement;url:string;captureDate:CaptureDate|null;settings:Settings};
 function makeDemo(){
  const c=document.createElement('canvas');c.width=1000;c.height=1250;const x=c.getContext('2d')!;
  let seed=45;const rand=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
@@ -15,7 +16,7 @@ export function Preview({photo,settings,index,large=false}:{photo?:Photo;setting
  const ref=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
   let cancelled=false;const image=photo?.image??demo;
-  const draw=async()=>{if(settings.textEnabled)await loadFilmFont(settings.font,settings.text);if(!cancelled&&ref.current)renderFilm(ref.current,image,image.naturalWidth,image.naturalHeight,settings,index,large?3000:1200);};
+  const draw=async()=>{if(settings.textEnabled)await loadFilmFont(settings.font,settings.text);if(!cancelled&&ref.current)renderFilm(ref.current,image,image.naturalWidth,image.naturalHeight,settings,index,large?3000:1200,photo?.captureDate??null);};
   if(image.complete)void draw();else image.addEventListener('load',draw,{once:true});
   return()=>{cancelled=true;image.removeEventListener('load',draw);};
  },[photo,settings,index,large]);

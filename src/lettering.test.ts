@@ -7,7 +7,7 @@ describe('lettering preferences', () => {
     const data = new Map<string, string>();
     const storage = {getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => {data.set(key, value);}};
     saveLettering({...defaults, text: '旅行记录', textEnabled: false, font: 'Doto', fontSize: 36}, storage);
-    expect(readLettering(storage)).toEqual({text: '旅行记录', textEnabled: false, font: 'Doto', fontSize: 36, ink: defaults.ink});
+    expect(readLettering(storage)).toEqual({text: '旅行记录', textEnabled: false, font: 'Doto', fontSize: 36, ink: defaults.ink, dateStampEnabled:true});
     expect(JSON.parse(data.get(LETTERING_KEY)!)).not.toHaveProperty('format');
   });
   it('validates damaged or outdated storage and bounds text input', () => {
@@ -16,6 +16,10 @@ describe('lettering preferences', () => {
   });
   it('migrates retired Pixelify Sans to the bilingual default without losing text', () => {
     expect(readLettering({getItem: () => '{"text":"记忆 Memory","font":"Pixelify Sans","textEnabled":false}'})).toEqual({text:'记忆 Memory',font:'Fusion Pixel 12',textEnabled:false});
+  });
+  it('remembers the independent camera date switch', () => {
+    expect(readLettering({getItem: () => '{"textEnabled":false,"dateStampEnabled":true}'})).toEqual({textEnabled:false,dateStampEnabled:true});
+    expect(readLettering({getItem: () => '{"dateStampEnabled":false}'})).toEqual({dateStampEnabled:false});
   });
   it('preserves an intentionally empty label', () => {
     expect(readLettering({getItem: () => '{"text":""}'})).toEqual({text: ''});

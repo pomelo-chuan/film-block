@@ -1,7 +1,9 @@
+import {drawDateStamp} from './date-stamp';
+import type {CaptureDate} from './photo-date';
 export const fonts = ['Fusion Pixel 12', 'Fusion Pixel 10', 'Cubic 11', 'Doto', 'Silkscreen', 'Press Start 2P'] as const;
 export const fontLabels: Record<typeof fonts[number], string> = {'Fusion Pixel 12':'缝合像素 12px','Fusion Pixel 10':'缝合像素 10px','Cubic 11':'俐方体 Cubic 11','Doto':'Doto · 点阵','Silkscreen':'Silkscreen','Press Start 2P':'Press Start 2P'};
-export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; textEnabled: boolean; font: typeof fonts[number]; fontSize: number; texture: 'smooth' | 'grain' };
-export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', textEnabled:true, font:'Fusion Pixel 12', fontSize:32, texture:'smooth'};
+export type Settings = { format: '135' | '120'; color: string; ink: string; text: string; textEnabled: boolean; font: typeof fonts[number]; fontSize: number; texture: 'smooth' | 'grain'; dateStampEnabled:boolean };
+export const defaults: Settings = {format:'135', color:'#171815', ink:'#dda84d', text:'KODAK PORTRA 400', textEnabled:true, font:'Fusion Pixel 12', fontSize:32, texture:'smooth', dateStampEnabled:true};
 export async function loadFilmFont(font: Settings['font'], text='FILM BLOCK') {
   const sample=`${text} 中文 Aa 0123456789`;
   await document.fonts.load(`400 24px "${font}"`,sample);
@@ -58,7 +60,7 @@ function drawBaseTexture(ctx:CanvasRenderingContext2D,w:number,h:number,g:Return
   }
   ctx.restore();
 }
-export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:number,h:number,s:Settings,index:number,maxSize=6000){
+export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:number,h:number,s:Settings,index:number,maxSize=6000,captureDate:CaptureDate|null=null){
   const full=geometry(w,h,s);
   const factor=Math.min(1,maxSize/Math.max(full.width,full.height));
   w=Math.max(1,Math.floor(w*factor));h=Math.max(1,Math.floor(h*factor));
@@ -71,6 +73,7 @@ export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:
   for(const hole of perforations(g,s)){
     ctx.beginPath();ctx.roundRect(hole.x,hole.y,hole.width,hole.height,hole.radius);ctx.fill();
   }
+  if(s.dateStampEnabled&&captureDate)drawDateStamp(ctx,g.x,g.y,w,h,captureDate);
   if(!s.textEnabled)return;
   const font=pxPerMm*1.7*s.fontSize/40, textInset=pxPerMm*(s.format==='135'?1:1.25);ctx.fillStyle=s.ink;ctx.font=`400 ${font}px ${fontStack(s.font)}`;ctx.textBaseline='alphabetic';
   const label=s.text.trim();const frame=String(index+1).padStart(2,'0');
