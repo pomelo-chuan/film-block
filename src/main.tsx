@@ -8,6 +8,7 @@ import '@fontsource/press-start-2p/latin-400.css';
 import '@fontsource/doto/latin-400.css';
 import {readLettering, saveLettering} from './lettering';
 import {getInitialTheme, applyTheme, rememberTheme, type Theme} from './theme';
+import {exportOptions,readExportOption,rememberExportOption,getExportOption,encodeExport,formatFileSize} from './export';
 import './style.css';
 type Photo={id:string;name:string;image:HTMLImageElement;url:string;settings:Settings};
 function makeDemo(){
@@ -31,6 +32,7 @@ function Preview({photo,settings,index,large=false}:{photo?:Photo;settings:Setti
  return <canvas ref={ref} aria-label={photo?`${photo.name} 的胶片边框预览`:'胶片边框示例预览'}/>;
 }
 function App(){
+ const [exportOption,setExportOption]=useState(readExportOption);
  const [theme,setTheme]=useState<Theme>(getInitialTheme);
  useEffect(()=>{applyTheme(theme);},[theme]);
  function toggleTheme(){const next=theme==='dark'?'light':'dark';setTheme(next);rememberTheme(next);}
@@ -52,7 +54,27 @@ function App(){
  }
  function remove(id:string){const p=photos.find(p=>p.id===id);if(p){URL.revokeObjectURL(p.url);urls.current.delete(p.url);}const rest=photos.filter(p=>p.id!==id);setPhotos(rest);setSelected(s=>s.filter(v=>v!==id));if(active===id)setActive(rest[0]?.id??'');}
  function download(blob:Blob,name:string){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
- async function exportPhotos(targets:Photo[]){if(!targets.length){input.current?.click();return;}setBusy(true);try{const zip=new JSZip();for(let i=0;i<targets.length;i++){const p=targets[i];if(p.settings.textEnabled)await loadFilmFont(p.settings.font,p.settings.text);const canvas=document.createElement('canvas');renderFilm(canvas,p.image,p.image.naturalWidth,p.image.naturalHeight,p.settings,photos.indexOf(p));const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('导出失败')),'image/png'));if(targets.length===1)download(blob,safeFilename(p.name));else zip.file(`${String(i+1).padStart(2,'0')}-${safeFilename(p.name)}`,blob);canvas.width=canvas.height=0;}if(targets.length>1)download(await zip.generateAsync({type:'blob'}),'film-block.zip');setMessage(`已导出 ${targets.length} 张照片 · PNG 无损格式`);}catch{setMessage('导出失败，请减少照片数量后重试');}finally{setBusy(false);}}
+ async function exportPhotos(targets:Photo[]){
+  if(!targets.length){input.current?.click();return;}
+  const option=exportOption;setBusy(true);
+  try{
+   const zip=new JSZip();let totalBytes=0;
+   for(let i=0;i<targets.length;i++){
+    const p=targets[i];if(p.settings.textEnabled)await loadFilmFont(p.settings.font,p.settings.text);
+    const canvas=document.createElement('canvas');let blob:Blob;
+    try{
+     renderFilm(canvas,p.image,p.image.naturalWidth,p.image.naturalHeight,p.settings,photos.indexOf(p),option.maxSize);
+     blob=await encodeExport(canvas,option);
+    }finally{canvas.width=canvas.height=0;}
+    totalBytes+=blob.size;
+    const name=safeFilename(p.name,option.extension);
+    if(targets.length===1)download(blob,name);else zip.file(`${String(i+1).padStart(2,'0')}-${name}`,blob);
+   }
+   if(targets.length>1){const archive=await zip.generateAsync({type:'blob'});totalBytes=archive.size;download(archive,'film-block.zip');}
+   setMessage(`已导出 ${targets.length} 张照片 · ${option.extension==='jpg'?'JPEG':'PNG'} · ${formatFileSize(totalBytes)}`);
+  }catch{setMessage('导出失败，请减少照片数量后重试');}finally{setBusy(false);}
+ }
+
  const target=scope==='all'?photos:photos.filter(p=>selected.includes(p.id));
  return <div className="app"><header><a className="brand" href="./"><span className="brand-icon">▥</span> FILM BLOCK</a><div className="header-title"><h1>胶片边框工作室</h1><span>让每一张，都有胶片的余温。</span></div><button className="theme-toggle" type="button" aria-label={theme==='dark'?'切换浅色模式':'切换深色模式'} title={theme==='dark'?'浅色模式':'深色模式'} onClick={toggleTheme}>{theme==='dark'?<Sun size={16}/>:<Moon size={16}/>}</button><a className="github" href="https://github.com/pomelo-chuan/film-block" target="_blank" rel="noreferrer">GitHub ↗</a></header>
  <main>
@@ -64,7 +86,8 @@ function App(){
  <section className="setting"><div className="setting-title"><span>01</span><h3>胶卷格式</h3><small>FILM FORMAT</small></div><div className="formats">{(['135','120'] as const).map(f=><button key={f} className={shown.format===f?'chosen':''} onClick={()=>change({format:f})}><span className={`film-icon f${f}`}>▥</span><strong>{f}</strong><small>{f==='135'?'35 mm · 标准齿孔':'61 mm · 无齿孔'}</small>{shown.format===f&&<Check size={13}/>}</button>)}</div><p className="format-note">{shown.format==='135'?'标准双侧齿孔 · 孔距 4.75 mm · 大小和排列自动适配':'120 中画幅片基 · 固定无齿孔 · 窄片边'}</p></section>
  <section className="setting"><div className="setting-title"><span>02</span><h3>片基颜色</h3><small>FILM BASE</small></div><div className="swatches">{presets.map(p=><button key={p.color} title={p.name} aria-label={p.name} aria-pressed={shown.color===p.color} className={shown.color===p.color?'selected':''} onClick={()=>change({color:p.color,ink:p.ink})}><span style={{background:p.color}}>{shown.color===p.color&&<Check size={14} color={p.ink}/>}</span></button>)}<label className="custom-color" title="自定义片基颜色"><Plus size={17}/><input aria-label="自定义片基颜色" type="color" value={shown.color} onChange={e=>change({color:e.target.value})}/></label></div><div className="field-row texture-row"><label htmlFor="texture">片基图案</label><div className="select-wrap"><select id="texture" value={shown.texture} onChange={e=>change({texture:e.target.value as Settings['texture']})}><option value="smooth">纯色片基</option><option value="grain">细颗粒纹理</option></select><ChevronDown size={13}/></div></div><div className="color-caption"><span>{presets.find(p=>p.color===shown.color)?.name??'自定义颜色'}</span><code>{shown.color.toUpperCase()}</code></div></section>
  <section className="setting last"><div className="setting-title"><span>03</span><h3>片基文字</h3><label className="text-toggle"><input type="checkbox" role="switch" aria-label="显示片基文字" checked={shown.textEnabled} onChange={e=>change({textEnabled:e.target.checked})}/><span>显示文字</span></label></div><fieldset className="lettering-fields" disabled={!shown.textEnabled}><input className="text-input" aria-label="片基文字" maxLength={80} value={shown.text} onChange={e=>change({text:e.target.value})} placeholder="写下相机、胶卷或一句心情"/><div className="font-controls"><label htmlFor="font">像素字体</label><select id="font" value={shown.font} onChange={e=>change({font:e.target.value as Settings['font']})}>{fonts.map(font=><option key={font} value={font}>{fontLabels[font]}</option>)}</select></div><label className="range-label" htmlFor="font-size">文字大小 <span>{shown.fontSize}</span></label><input id="font-size" type="range" min="18" max="40" value={shown.fontSize} onChange={e=>change({fontSize:+e.target.value})}/><div className="field-note"><span>开源字体 · 支持中英文</span><label>字色 <input aria-label="文字颜色" type="color" value={shown.ink} onChange={e=>change({ink:e.target.value})}/></label></div></fieldset></section>
- <button className="export-button" disabled={busy} onClick={()=>void exportPhotos(target)}>{busy?<LoaderCircle className="spin" size={17}/>:<Download size={17}/>} {busy?'正在处理…':`导出${scope==='all'?'全部':'选中'}照片`}<span>{target.length||'PNG'} <ArrowDown size={13}/></span></button><p className="privacy">本地处理 · 照片不会上传到服务器</p></aside></div>
+ <div className="export-options"><div className="field-row"><label htmlFor="export-quality">导出质量</label><div className="select-wrap"><select id="export-quality" disabled={busy} value={exportOption.id} onChange={e=>{const option=getExportOption(e.target.value);setExportOption(option);rememberExportOption(option.id);}}>{exportOptions.map(option=><option key={option.id} value={option.id}>{option.label}</option>)}</select><ChevronDown size={13}/></div></div><p>{exportOption.description}</p></div>
+ <button className="export-button" disabled={busy} onClick={()=>void exportPhotos(target)}>{busy?<LoaderCircle className="spin" size={17}/>:<Download size={17}/>} {busy?'正在处理…':`导出${scope==='all'?'全部':'选中'}照片`}<span>{target.length||exportOption.extension.toUpperCase()} <ArrowDown size={13}/></span></button><p className="privacy">本地处理 · 照片不会上传到服务器</p></aside></div>
  <footer><span>FILM BLOCK <b>让日常，值得回看。</b></span><span>NO UPLOADS. JUST MEMORIES. <i>✳</i></span></footer></main>{message&&<div className="toast" role="status">{message}<button aria-label="关闭提示" onClick={()=>setMessage('')}><X size={15}/></button></div>}{expanded&&<div className="modal" role="dialog" aria-modal="true" aria-label="放大预览" onClick={()=>setExpanded(false)}><button autoFocus aria-label="关闭放大预览" onClick={()=>setExpanded(false)}><X/></button><div onClick={e=>e.stopPropagation()}><Preview photo={current} settings={shown} index={index} large/></div></div>}</div>;
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

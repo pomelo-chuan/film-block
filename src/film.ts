@@ -59,7 +59,9 @@ function drawBaseTexture(ctx:CanvasRenderingContext2D,w:number,h:number,g:Return
   ctx.restore();
 }
 export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:number,h:number,s:Settings,index:number,maxSize=6000){
-  const factor=Math.min(1,maxSize/Math.max(w,h)); w=Math.round(w*factor);h=Math.round(h*factor);
+  const full=geometry(w,h,s);
+  const factor=Math.min(1,maxSize/Math.max(full.width,full.height));
+  w=Math.max(1,Math.floor(w*factor));h=Math.max(1,Math.floor(h*factor));
   const g=geometry(w,h,s); canvas.width=g.width;canvas.height=g.height;
   const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('浏览器不支持 Canvas');
   ctx.fillStyle=s.color;ctx.fillRect(0,0,g.width,g.height);ctx.drawImage(image,g.x,g.y,w,h);
@@ -82,4 +84,4 @@ export function renderFilm(canvas:HTMLCanvasElement, image:CanvasImageSource, w:
   const frameLabel=`${s.format}  ▸  ${frame} A`, frameMetrics=ctx.measureText(frameLabel);
   ctx.fillText(frameLabel,0,(frameMetrics.actualBoundingBoxAscent-frameMetrics.actualBoundingBoxDescent)/2,(vertical?h:w)*.8);ctx.restore();
 }
-export function safeFilename(name:string){return name.replace(/\.[^.]+$/,'').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_')+'-film.png';}
+export function safeFilename(name:string,extension:'png'|'jpg'='png'){return name.replace(/\.[^.]+$/,'').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_')+`-film.${extension}`;}
