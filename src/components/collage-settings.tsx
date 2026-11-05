@@ -1,0 +1,14 @@
+import {canvasRatios,arrangements,type CollageSettings} from '@/collage';
+import {Button} from './ui/button';
+import {Label} from './ui/label';
+import {Slider} from './ui/slider';
+import {ToggleGroup,ToggleGroupItem} from './ui/toggle-group';
+export function CollageControls({settings,change,count}:{settings:CollageSettings;change:(patch:Partial<CollageSettings>)=>void;count:number}){
+ return <div className="space-y-4 p-3">
+  <div className="space-y-2"><Label>画布比例</Label><div className="grid grid-cols-4 gap-2">{canvasRatios.map(ratio=><Button key={ratio} variant={settings.ratio===ratio?'default':'outline'} className="h-11" aria-pressed={settings.ratio===ratio} onClick={()=>change({ratio})}>{ratio}</Button>)}</div></div>
+  <div className="space-y-2"><Label>排列方式</Label><ToggleGroup type="single" value={settings.arrangement} onValueChange={value=>{if(value in arrangements)change({arrangement:value as CollageSettings['arrangement']});}} className="w-full" variant="outline" aria-label="拼图排列">{Object.entries(arrangements).map(([value,label])=><ToggleGroupItem key={value} value={value} className="h-11 flex-1 px-1 text-xs">{label}</ToggleGroupItem>)}</ToggleGroup></div>
+  <div className="space-y-2"><Label>输出页数</Label><ToggleGroup type="single" value={String(Math.min(settings.slides,Math.max(1,count)))} onValueChange={value=>{if(value)change({slides:Number(value)});}} className="w-full" variant="outline" aria-label="输出页数">{[1,2,3].map(n=><ToggleGroupItem key={n} value={String(n)} disabled={n>Math.max(1,count)} className="h-11 flex-1">{n} 页</ToggleGroupItem>)}</ToggleGroup><p className="text-[11px] text-muted-foreground">按顺序均匀分页，每页最多 12 张；超过后自动增加页数。</p></div>
+  {([{key:'spacing',label:'照片间距',max:10},{key:'margin',label:'画布留白',max:20}] as const).map(({key,label,max})=><div key={key}><div className="flex justify-between text-xs"><Label htmlFor={`collage-${key}`}>{label}</Label><span>{settings[key]}%</span></div><Slider id={`collage-${key}`} aria-label={label} className="h-11" min={0} max={max} step={1} value={[settings[key]]} onValueChange={([value])=>change({[key]:value})}/></div>)}
+  <div className="flex min-h-11 items-center justify-between gap-2"><Label htmlFor="collage-bg">画布颜色</Label><div className="flex items-center gap-2">{['#f7f5ef','#ffffff','#171815'].map(color=><Button key={color} variant="outline" className="size-11 rounded-full p-1" aria-label={`画布颜色 ${color}`} aria-pressed={settings.background===color} onClick={()=>change({background:color})}><span className="size-8 rounded-full border" style={{background:color}}/></Button>)}<input id="collage-bg" type="color" aria-label="自定义画布颜色" className="size-11 rounded border bg-transparent p-1" value={settings.background} onChange={event=>change({background:event.target.value})}/></div></div>
+ </div>;
+}

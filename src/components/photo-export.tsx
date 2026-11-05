@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Download,LoaderCircle,Share2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {collagePages,renderCollage,type CollageSettings} from '@/collage';
 import type {Photo} from './film-preview';
 import {loadFilmFont,loadDateFont,renderFilm,safeFilename} from '@/film';
 import {encodeExport,formatFileSize,type ExportOption} from '@/export';
@@ -14,17 +15,28 @@ function download(file:Blob,name:string){
  // Safari may consume the URL after the click handler has returned.
  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
-export function PhotoExport({photos,targets,option,busy,setBusy,notify,onAdd}:{photos:Photo[];targets:Photo[];option:ExportOption;busy:boolean;setBusy:(value:boolean)=>void;notify:(message:string)=>void;onAdd:()=>void}){
+export function PhotoExport({photos,targets,option,busy,setBusy,notify,onAdd,collage}:{collage?:CollageSettings;photos:Photo[];targets:Photo[];option:ExportOption;busy:boolean;setBusy:(value:boolean)=>void;notify:(message:string)=>void;onAdd:()=>void}){
  const [prepared,setPrepared]=useState<Prepared[]>([]);
  const version=useRef(0);
  const targetIds=targets.map(photo=>photo.id).join(',');
- useEffect(()=>{version.current++;setPrepared([]);return()=>{version.current++;};},[photos,option,targetIds]);
+ useEffect(()=>{version.current++;setPrepared([]);return()=>{version.current++;};},[photos,option,targetIds,collage]);
  useEffect(()=>()=>{prepared.forEach(photo=>URL.revokeObjectURL(photo.url));},[prepared]);
  async function prepare(){
   if(!targets.length){onAdd();return;}
   setBusy(true);const revision=version.current;
   try{
    const files:File[]=[];
+   if(collage){
+    const pages=collagePages(targets,collage.slides);
+    for(let i=0;i<pages.length;i++){
+     if(revision!==version.current)return;
+     const canvas=document.createElement('canvas');
+     try{await renderCollage(canvas,pages[i],photos,collage,option.maxSize,()=>revision!==version.current);
+      if(revision!==version.current)return;
+      const blob=await encodeExport(canvas,option);files.push(new File([blob],`film-block-collage-${String(i+1).padStart(2,'0')}.${option.extension}`,{type:blob.type}));
+     }finally{canvas.width=canvas.height=0;}
+    }
+   }else{
    for(const photo of targets){
     if(revision!==version.current)return;
     if(photo.settings.textEnabled)await loadFilmFont(photo.settings.font,photo.settings.text);
@@ -35,6 +47,7 @@ export function PhotoExport({photos,targets,option,busy,setBusy,notify,onAdd}:{p
      const blob=await encodeExport(canvas,option);
      files.push(new File([blob],`${String(files.length+1).padStart(2,'0')}-${safeFilename(photo.name,option.extension)}`,{type:blob.type}));
     }finally{canvas.width=canvas.height=0;}
+   }
    }
    if(revision!==version.current)return;
    setPrepared(files.map(file=>({file,url:URL.createObjectURL(file)})));
@@ -57,7 +70,7 @@ export function PhotoExport({photos,targets,option,busy,setBusy,notify,onAdd}:{p
  }
  const files=prepared.map(photo=>photo.file),shareable=canSharePhotos(files);
  return <div className="space-y-3">
-  {!prepared.length?<Button className="h-11 w-full" disabled={busy||(photos.length>0&&!targets.length)} onClick={()=>void prepare()}>{busy?<LoaderCircle className="size-4 animate-spin"/>:<Share2 className="size-4"/>}{busy?'正在准备照片…':photos.length?`准备保存 ${targets.length} 张照片`:'添加照片'}</Button>:<>
+  {!prepared.length?<Button className="h-11 w-full" disabled={busy||(photos.length>0&&!targets.length)} onClick={()=>void prepare()}>{busy?<LoaderCircle className="size-4 animate-spin"/>:<Share2 className="size-4"/>}{busy?'正在准备照片…':photos.length?collage?`准备保存 ${collagePages(targets,collage.slides).length} 页拼图`:`准备保存 ${targets.length} 张照片`:'添加照片'}</Button>:<>
    <div role="status" className="text-sm">已准备 {prepared.length} 张 · {formatFileSize(files.reduce((total,file)=>total+file.size,0))}</div>
    {shareable&&<Button className="h-11 w-full" disabled={busy} onClick={()=>void share(files)}><Share2 className="size-4"/>保存到相册 / 分享{prepared.length>1?` ${prepared.length} 张`:''}</Button>}
    <p className="text-xs leading-relaxed text-muted-foreground">{shareable?'iPhone：在系统分享菜单选择「存储图像」，可一次保存多张。':'可打开下方大图，在 iPhone 上长按选择「存储到照片」。'}取消分享后可再次尝试。</p>
