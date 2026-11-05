@@ -18,6 +18,15 @@ export function contactLayout(count:number,s:ContactSettings){
  const slots=Array.from({length:rows*columns},(_,i)=>({x:margin+i%columns*(frameWidth+gutter)+gutter/2,y:margin+Math.floor(i/columns)*(filmHeight+rowGap)+(filmHeight-frameHeight)/2,width:frameWidth,height:frameHeight,filled:i<count}));
  return {width:stripWidth+margin*2,height:margin*2+Math.max(0,rows*(filmHeight+rowGap)-rowGap)+footerHeight,margin,columns,rows,filmHeight,gutter,frameWidth,frameHeight,rowGap,stripWidth,footerHeight,slots};
 }
+// Compare retained image area in both orientations; ties keep the decoded photo upright.
+export function contactImageFit(imageWidth:number,imageHeight:number,width:number,height:number){
+ const target=width/height,aspect=imageWidth/imageHeight;
+ const retention=(ratio:number)=>Math.min(ratio/target,target/ratio);
+ const rotated=retention(1/aspect)>retention(aspect)+1e-9;
+ const orientedWidth=rotated?imageHeight:imageWidth,orientedHeight=rotated?imageWidth:imageHeight;
+ const scale=Math.max(width/orientedWidth,height/orientedHeight);
+ return {rotated,drawWidth:imageWidth*scale,drawHeight:imageHeight*scale,width:orientedWidth*scale,height:orientedHeight*scale};
+}
 export async function renderContact(canvas:HTMLCanvasElement,photos:Photo[],s:ContactSettings,base:Settings,maxSize:number,rollIndex=0,cancelled=()=>false){
  const g=contactLayout(photos.length,s),unit=maxSize/Math.max(g.width,g.height);
  canvas.width=Math.max(1,Math.round(g.width*unit));canvas.height=Math.max(1,Math.round(g.height*unit));
@@ -47,9 +56,11 @@ export async function renderContact(canvas:HTMLCanvasElement,photos:Photo[],s:Co
   const x=slot.x*unit,y=slot.y*unit,w=slot.width*unit,h=slot.height*unit;
   ctx.fillStyle='#100e0c';ctx.fillRect(x,y,w,h);
   if(p){
-   const factor=Math.min(w/p.image.naturalWidth,h/p.image.naturalHeight),dw=p.image.naturalWidth*factor,dh=p.image.naturalHeight*factor,dx=x+(w-dw)/2,dy=y+(h-dh)/2;
-   ctx.drawImage(p.image,dx,dy,dw,dh);
-   if(p.settings.dateStampEnabled&&p.captureDate){await loadDateFont(p.settings);if(cancelled())return;drawDateStamp(ctx,dx,dy,dw,dh,p.captureDate,p.settings.dateFont,p.settings.dateFormat);}
+   const fit=contactImageFit(p.image.naturalWidth,p.image.naturalHeight,w,h);
+   ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+   ctx.translate(x+w/2,y+h/2);if(fit.rotated)ctx.rotate(Math.PI/2);
+   ctx.drawImage(p.image,-fit.drawWidth/2,-fit.drawHeight/2,fit.drawWidth,fit.drawHeight);ctx.restore();
+   if(p.settings.dateStampEnabled&&p.captureDate){await loadDateFont(p.settings);if(cancelled())return;drawDateStamp(ctx,x,y,w,h,p.captureDate,p.settings.dateFont,p.settings.dateFormat);}
   }
   const style=p?.settings??base;
   if(style.textEnabled){

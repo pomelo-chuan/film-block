@@ -9,6 +9,6 @@ export function ContactControls({settings,change,onSort}:{settings:ContactSettin
   <div className="flex min-h-11 items-center justify-between"><Label htmlFor="contact-info">显示整卷信息栏</Label><Switch id="contact-info" checked={settings.infoEnabled} onCheckedChange={infoEnabled=>change({infoEnabled})}/></div>
   <div className="flex min-h-11 items-center justify-between"><Label htmlFor="contact-empty">显示末行空白格</Label><Switch id="contact-empty" checked={settings.emptyFrames} onCheckedChange={emptyFrames=>change({emptyFrames})}/></div>
   <Label className="flex min-h-11 items-center justify-between gap-2">背景颜色<input type="color" aria-label="整卷背景颜色" className="size-11 rounded border bg-transparent p-1" value={settings.background} onChange={e=>change({background:e.target.value})}/></Label>
-  <p className="text-xs leading-relaxed text-muted-foreground">保留照片比例，不旋转或裁切。135 使用连续标准齿孔，120 无齿孔。使用统一片基，文字和日期沿用各张设置；信息栏日期仅取自本卷照片。</p>
+  <p className="text-xs leading-relaxed text-muted-foreground">照片自动匹配方向并居中裁切，填满画格且不拉伸。135 使用连续标准齿孔，120 无齿孔。使用统一片基，文字和日期沿用各张设置；信息栏日期仅取自本卷照片。</p>
  </div>;
 }

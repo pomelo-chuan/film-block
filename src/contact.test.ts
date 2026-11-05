@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {contactDefaults,contactCapacity,contactPages,contactLayout,orderByCaptureDate,contactDateRange} from './contact';
+import {contactDefaults,contactCapacity,contactPages,contactLayout,orderByCaptureDate,contactDateRange,contactImageFit} from './contact';
 import {parseCaptureDate} from './photo-date';
 describe('complete roll pagination',()=>{
  for(const format of ['135','120'] as const)it(`${format} keeps every frame in order, with no empty rolls`,()=>{
@@ -29,5 +29,27 @@ describe('roll date information',()=>{
  });
  it('never invents a footer date and only reports dates from that roll',()=>{
   expect(contactDateRange([unknown])).toBe('');expect(contactDateRange([newer,unknown])).toBe('2024-02-29');expect(contactDateRange([newer,unknown,old])).toBe('1995-07-08 – 2024-02-29');
+ });
+});
+
+describe('contact frame auto orientation and fill',()=>{
+ it('rotates portrait photos to fill landscape 135 frames without cropping a matching aspect ratio',()=>{
+  expect(contactImageFit(400,600,360,240)).toEqual({rotated:true,drawWidth:240,drawHeight:360,width:360,height:240});
+  expect(contactImageFit(600,400,360,240).rotated).toBe(false);
+ });
+ it('keeps original orientation for square 120 frames and equal-area choices',()=>{
+  expect(contactImageFit(400,600,560,560).rotated).toBe(false);
+  expect(contactImageFit(600,400,560,560).rotated).toBe(false);
+  expect(contactImageFit(500,500,360,240).rotated).toBe(false);
+ });
+ it('always covers the frame without stretching, including panoramas and tall portraits',()=>{
+  for(const [iw,ih] of [[400,600],[600,400],[400,400],[2000,200],[200,2000],[4032,3024]])for(const [w,h] of [[360,240],[560,560]]){
+   const fit=contactImageFit(iw,ih,w,h);
+   expect(fit.width).toBeGreaterThanOrEqual(w-1e-6);expect(fit.height).toBeGreaterThanOrEqual(h-1e-6);
+   expect(fit.drawWidth/fit.drawHeight).toBeCloseTo(iw/ih,10);
+   const retained=w*h/(fit.width*fit.height),normal=Math.max(w/iw,h/ih),rotated=Math.max(w/ih,h/iw);
+   expect(retained+1e-9).toBeGreaterThanOrEqual(w*h/(iw*ih*normal*normal));
+   expect(retained+1e-9).toBeGreaterThanOrEqual(w*h/(iw*ih*rotated*rotated));
+  }
  });
 });
