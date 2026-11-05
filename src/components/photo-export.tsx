@@ -1,6 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
 import {Download,LoaderCircle,Share2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {contactPages,renderContact,type ContactSettings} from '@/contact';
+import type {Settings} from '@/film';
 import {collagePages,renderCollage,type CollageSettings} from '@/collage';
 import type {Photo} from './film-preview';
 import {loadFilmFont,loadDateFont,renderFilm,safeFilename} from '@/film';
@@ -15,18 +17,28 @@ function download(file:Blob,name:string){
  // Safari may consume the URL after the click handler has returned.
  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
-export function PhotoExport({photos,targets,option,busy,setBusy,notify,onAdd,collage}:{collage?:CollageSettings;photos:Photo[];targets:Photo[];option:ExportOption;busy:boolean;setBusy:(value:boolean)=>void;notify:(message:string)=>void;onAdd:()=>void}){
+export function PhotoExport({photos,targets,option,busy,setBusy,notify,onAdd,collage,contact,base}:{contact?:ContactSettings;base?:Settings;collage?:CollageSettings;photos:Photo[];targets:Photo[];option:ExportOption;busy:boolean;setBusy:(value:boolean)=>void;notify:(message:string)=>void;onAdd:()=>void}){
  const [prepared,setPrepared]=useState<Prepared[]>([]);
  const version=useRef(0);
  const targetIds=targets.map(photo=>photo.id).join(',');
- useEffect(()=>{version.current++;setPrepared([]);return()=>{version.current++;};},[photos,option,targetIds,collage]);
+ useEffect(()=>{version.current++;setPrepared([]);return()=>{version.current++;};},[photos,option,targetIds,collage,contact,base]);
  useEffect(()=>()=>{prepared.forEach(photo=>URL.revokeObjectURL(photo.url));},[prepared]);
  async function prepare(){
   if(!targets.length){onAdd();return;}
   setBusy(true);const revision=version.current;
   try{
    const files:File[]=[];
-   if(collage){
+   if(contact&&base){
+    const pages=contactPages(targets,contact);
+    for(let i=0;i<pages.length;i++){
+     if(revision!==version.current)return;
+     const canvas=document.createElement('canvas');
+     try{await renderContact(canvas,pages[i],contact,base,option.maxSize,i,()=>revision!==version.current);
+      if(revision!==version.current)return;
+      const blob=await encodeExport(canvas,option);files.push(new File([blob],`film-block-roll-${String(i+1).padStart(2,'0')}.${option.extension}`,{type:blob.type}));
+     }finally{canvas.width=canvas.height=0;}
+    }
+   }else if(collage){
     const pages=collagePages(targets,collage.slides);
     for(let i=0;i<pages.length;i++){
      if(revision!==version.current)return;
@@ -70,7 +82,7 @@ export function PhotoExport({photos,targets,option,busy,setBusy,notify,onAdd,col
  }
  const files=prepared.map(photo=>photo.file),shareable=canSharePhotos(files);
  return <div className="space-y-3">
-  {!prepared.length?<Button className="h-11 w-full" disabled={busy||(photos.length>0&&!targets.length)} onClick={()=>void prepare()}>{busy?<LoaderCircle className="size-4 animate-spin"/>:<Share2 className="size-4"/>}{busy?'正在准备照片…':photos.length?collage?`准备保存 ${collagePages(targets,collage.slides).length} 页拼图`:`准备保存 ${targets.length} 张照片`:'添加照片'}</Button>:<>
+  {!prepared.length?<Button className="h-11 w-full" disabled={busy||(photos.length>0&&!targets.length)} onClick={()=>void prepare()}>{busy?<LoaderCircle className="size-4 animate-spin"/>:<Share2 className="size-4"/>}{busy?'正在准备照片…':photos.length?contact?`准备保存 ${contactPages(targets,contact).length} 卷胶片`:collage?`准备保存 ${collagePages(targets,collage.slides).length} 页拼图`:`准备保存 ${targets.length} 张照片`:'添加照片'}</Button>:<>
    <div role="status" className="text-sm">已准备 {prepared.length} 张 · {formatFileSize(files.reduce((total,file)=>total+file.size,0))}</div>
    {shareable&&<Button className="h-11 w-full" disabled={busy} onClick={()=>void share(files)}><Share2 className="size-4"/>保存到相册 / 分享{prepared.length>1?` ${prepared.length} 张`:''}</Button>}
    <p className="text-xs leading-relaxed text-muted-foreground">{shareable?'iPhone：在系统分享菜单选择「存储图像」，可一次保存多张。':'可打开下方大图，在 iPhone 上长按选择「存储到照片」。'}取消分享后可再次尝试。</p>
