@@ -1,13 +1,14 @@
 import React, {useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {ArrowLeft,ArrowRight,Check,Download,Film,Layers,LoaderCircle,Moon,Sun,Plus,Trash2,X,Settings2,Palette,Type,CalendarDays} from 'lucide-react';
-import {defaults,presets,fonts,fontLabels,loadFilmFont,loadDateFont,renderFilm,safeFilename,type Settings} from './film';
+import {defaults,presets,fonts,fontLabels,type Settings} from './film';
 import '@fontsource/silkscreen/latin-400.css';
 import '@fontsource/press-start-2p/latin-400.css';
 import '@fontsource/doto/latin-400.css';
 import {readLettering,saveLettering} from './lettering';
 import {getInitialTheme,applyTheme,rememberTheme,type Theme} from './theme';
-import {exportOptions,readExportOption,rememberExportOption,getExportOption,encodeExport,formatFileSize} from './export';
+import {exportOptions,readExportOption,rememberExportOption,getExportOption} from './export';
+import {PhotoExport} from '@/components/photo-export';
 import {Preview,type Photo} from '@/components/film-preview';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -55,29 +56,6 @@ function App(){
   setPhotos(ps=>[...ps,...added]);if(added.length){setActive(added[0].id);setSelected(added.map(p=>p.id));setManageOpen(false);setPanelOpen(false);}setBusy(false);setMessage(failed?`已导入 ${added.length} 张，${failed} 个文件无法读取（支持常见图片格式，单张不超过 1 亿像素）`:`已导入 ${added.length} 张照片`);
  }
  function remove(id:string){const p=photos.find(p=>p.id===id);if(p){URL.revokeObjectURL(p.url);urls.current.delete(p.url);}const rest=photos.filter(p=>p.id!==id);setPhotos(rest);setSelected(s=>s.filter(v=>v!==id));if(active===id)setActive(rest[0]?.id??'');}
- function download(blob:Blob,name:string){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
- async function exportPhotos(targets:Photo[]){
-  if(!targets.length){input.current?.click();return;}
-  const option=exportOption;setBusy(true);
-  try{
-   const Zip=targets.length>1?(await import('jszip')).default:null;
-   const zip=Zip?new Zip():null;let totalBytes=0;
-   for(let i=0;i<targets.length;i++){
-    const p=targets[i];if(p.settings.textEnabled)await loadFilmFont(p.settings.font,p.settings.text);
-    if(p.captureDate)await loadDateFont(p.settings);
-    const canvas=document.createElement('canvas');let blob:Blob;
-    try{
-     renderFilm(canvas,p.image,p.image.naturalWidth,p.image.naturalHeight,p.settings,photos.indexOf(p),option.maxSize,p.captureDate);
-     blob=await encodeExport(canvas,option);
-    }finally{canvas.width=canvas.height=0;}
-    totalBytes+=blob.size;
-    const name=safeFilename(p.name,option.extension);
-    if(targets.length===1)download(blob,name);else zip?.file(`${String(i+1).padStart(2,'0')}-${name}`,blob);
-   }
-   if(zip){const archive=await zip.generateAsync({type:'blob'});totalBytes=archive.size;download(archive,'film-block.zip');}
-   setMessage(`已导出 ${targets.length} 张照片 · ${option.extension==='jpg'?'JPEG':'PNG'} · ${formatFileSize(totalBytes)}`);setPanelOpen(false);
-  }catch{setMessage('导出失败，请减少照片数量后重试');}finally{setBusy(false);}
- }
 
  const target=scope==='all'?photos:photos.filter(p=>selected.includes(p.id));
  const choosePhoto=(id:string)=>{setActive(id);if(scope==='selected')setSelected(ids=>ids.includes(id)?ids:[...ids,id]);};
@@ -111,7 +89,7 @@ function App(){
       <div className="px-3 py-2"><ToggleGroup type="single" value={scope} onValueChange={value=>{if(value!=='all'&&value!=='selected')return;setScope(value);if(value==='selected'&&selected.length&&!selected.includes(active))setActive(selected[0]);}} variant="outline" className="w-full" aria-label="调整范围"><ToggleGroupItem value="all" className="h-11 flex-1 text-xs" aria-label="统一调整"><Layers/>全部照片 {photos.length||''}</ToggleGroupItem><ToggleGroupItem value="selected" className="h-11 flex-1 text-xs" aria-label="仅选中">仅选中 {selected.length}</ToggleGroupItem></ToggleGroup></div>
 {panel==='export'?<>
      <section className="export-dock space-y-3 px-4 pb-4" aria-label="导出照片">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-end gap-3"><div className="min-w-0 space-y-1.5"><Label htmlFor="export-quality" className="text-xs text-muted-foreground">导出质量</Label><Select disabled={busy} value={exportOption.id} onValueChange={value=>{const option=getExportOption(value);setExportOption(option);rememberExportOption(option.id);}}><SelectTrigger id="export-quality" aria-label="导出质量" className="h-11! w-full bg-background text-xs"><SelectValue>{exportOption.id==='balanced'?'均衡（推荐）':exportOption.label}</SelectValue></SelectTrigger><SelectContent>{exportOptions.map(option=><SelectItem key={option.id} value={option.id} className="min-h-12"><div className="flex flex-col gap-1"><span>{option.label}</span><span className="text-[10px] text-muted-foreground">{option.description}</span></div></SelectItem>)}</SelectContent></Select></div><Button className="export-button h-11 w-full gap-2 rounded-lg text-sm" disabled={busy||(photos.length>0&&target.length===0)} onClick={()=>void exportPhotos(target)}>{busy?<LoaderCircle className="size-4 animate-spin"/>:<Download className="size-4"/>}<span className="truncate">{busy?'正在处理…':photos.length?`导出${scope==='all'?'全部':'选中'}${target.length}张`:'添加照片'}</span></Button></div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{exportOption.description}</p>
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-end gap-3"><div className="min-w-0 space-y-1.5"><Label htmlFor="export-quality" className="text-xs text-muted-foreground">导出质量</Label><Select disabled={busy} value={exportOption.id} onValueChange={value=>{const option=getExportOption(value);setExportOption(option);rememberExportOption(option.id);}}><SelectTrigger id="export-quality" aria-label="导出质量" className="h-11! w-full bg-background text-xs"><SelectValue>{exportOption.id==='balanced'?'均衡（推荐）':exportOption.label}</SelectValue></SelectTrigger><SelectContent>{exportOptions.map(option=><SelectItem key={option.id} value={option.id} className="min-h-12"><div className="flex flex-col gap-1"><span>{option.label}</span><span className="text-[10px] text-muted-foreground">{option.description}</span></div></SelectItem>)}</SelectContent></Select></div><PhotoExport photos={photos} targets={target} option={exportOption} busy={busy} setBusy={setBusy} notify={setMessage} onAdd={()=>input.current?.click()}/></div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{exportOption.description}</p>
      </section>
 </>:<>
       <Tabs value={panel} onValueChange={value=>{setPanel(value as EditorPanel);setLastTool(value as Exclude<EditorPanel,'export'>);}} className="gap-0"><TabsList className="mx-3 h-12! w-[calc(100%-1.5rem)] rounded-lg" aria-label="胶片设置分类"><TabsTrigger value="film" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><Film className="size-3.5"/>胶卷</TabsTrigger><TabsTrigger value="base" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><Palette className="size-3.5"/>片基</TabsTrigger><TabsTrigger value="text" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><Type className="size-3.5"/>文字</TabsTrigger><TabsTrigger value="date" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><CalendarDays className="size-3.5"/>日期</TabsTrigger></TabsList>
