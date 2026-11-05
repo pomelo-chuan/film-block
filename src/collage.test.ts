@@ -29,3 +29,20 @@ describe('collage placement',()=>{
  });
  it('handles no photos without a phantom cell',()=>expect(collageLayout([],collageDefaults,960,1200)).toEqual([]));
 });
+
+describe('individual collage photo sizing',()=>{
+ for(const arrangement of Object.keys(arrangements) as (keyof typeof arrangements)[])it(`${arrangement} respects photo scale without cropping or overlapping`,()=>{
+  const aspects=[.6,1,1.8,.9],settings={...collageDefaults,arrangement};
+  const rects=collageLayout(aspects,settings,960,1200,[50,150,100,75]);
+  rects.forEach((r,i)=>{
+   expect(r.width/r.height).toBeCloseTo(aspects[i]);expect(r.x).toBeGreaterThanOrEqual(0);expect(r.y).toBeGreaterThanOrEqual(0);expect(r.x+r.width).toBeLessThanOrEqual(960);expect(r.y+r.height).toBeLessThanOrEqual(1200);
+   for(const b of rects.slice(i+1))expect(Math.min(r.x+r.width,b.x+b.width)-Math.max(r.x,b.x)<=1e-6||Math.min(r.y+r.height,b.y+b.height)-Math.max(r.y,b.y)<=1e-6).toBe(true);
+  });
+ });
+ it('applies independent relative sizing and returns exactly to the default after reset',()=>{
+  const settings={...collageDefaults,arrangement:'stack' as const};
+  const smaller=collageLayout([1,1],settings,960,1200,[50,100]);expect(smaller[0].width/smaller[1].width).toBeCloseTo(.5);
+  const bigger=collageLayout([1,1],settings,960,1200,[150,100]);expect(bigger[0].width/bigger[1].width).toBeCloseTo(1.5);
+  expect(collageLayout([1,1],settings,960,1200,[100,100])).toEqual(collageLayout([1,1],settings,960,1200));
+ });
+});
