@@ -1,0 +1,145 @@
+import { Plus, X, Trash2 } from "lucide-react";
+import type { Photo } from "@/types/photo";
+import { Button } from "./ui/button";
+import { Label } from "./ui/label";
+import { Checkbox } from "./ui/checkbox";
+import { Separator } from "./ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "./ui/sheet";
+import { Preview } from "./film-preview";
+import { cn } from "@/lib/utils";
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  photos: Photo[];
+  selected: string[];
+  active: string;
+  busy: boolean;
+  onAdd: () => void;
+  onSelectAll: () => void;
+  onChoose: (id: string) => void;
+  onToggle: (id: string) => void;
+  onRemove: (id: string) => void;
+  returnFocus: () => void;
+};
+export function PhotoManager({
+  open,
+  onOpenChange,
+  photos,
+  selected,
+  active,
+  busy,
+  onAdd,
+  onSelectAll,
+  onChoose,
+  onToggle,
+  onRemove,
+  returnFocus,
+}: Props) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocus();
+        }}
+        side="bottom"
+        showCloseButton={false}
+        className="mx-auto max-h-[85dvh] max-w-3xl gap-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)]"
+      >
+        <SheetHeader className="pr-16">
+          <SheetTitle>管理照片</SheetTitle>
+          <SheetDescription>
+            已选择 {selected.length} / {photos.length} 张 · 选择照片后可单独调整
+          </SheetDescription>
+        </SheetHeader>
+        <SheetClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-3 right-3 size-11"
+            aria-label="关闭照片管理"
+          >
+            <X />
+          </Button>
+        </SheetClose>
+        <Separator />
+        <div className="flex items-center justify-between gap-3 px-4 py-2">
+          <Button variant="ghost" className="h-11 px-2" onClick={onSelectAll}>
+            {selected.length === photos.length ? "取消全选" : "全选"}
+          </Button>
+          <Button
+            variant="outline"
+            className="h-11"
+            disabled={busy}
+            onClick={onAdd}
+          >
+            <Plus />
+            添加照片
+          </Button>
+        </div>
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {photos.map((p, i) => (
+              <article
+                key={p.id}
+                className={cn(
+                  "overflow-hidden rounded-xl border bg-muted/30",
+                  active === p.id && "border-primary",
+                )}
+              >
+                <Button
+                  variant="ghost"
+                  className="h-32 w-full rounded-none p-3"
+                  aria-label={`预览 ${p.name}`}
+                  onClick={() => {
+                    onChoose(p.id);
+                    onOpenChange(false);
+                  }}
+                >
+                  <Preview
+                    photo={p}
+                    settings={p.settings}
+                    index={i}
+                    maxSize={360}
+                  />
+                </Button>
+                <div className="flex min-h-12 items-center border-t">
+                  <Label
+                    className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 pl-3"
+                    htmlFor={`manage-${p.id}`}
+                  >
+                    <Checkbox
+                      id={`manage-${p.id}`}
+                      className="size-5 shrink-0"
+                      aria-label={`选择 ${p.name}`}
+                      checked={selected.includes(p.id)}
+                      onCheckedChange={() => onToggle(p.id)}
+                    />
+                    <span className="min-w-0 truncate text-xs">{p.name}</span>
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-11 shrink-0 text-muted-foreground hover:text-destructive"
+                    aria-label={`删除 ${p.name}`}
+                    disabled={busy}
+                    onClick={() => onRemove(p.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

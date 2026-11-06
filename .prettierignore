@@ -1,0 +1,2 @@
+# Keep vendored shadcn/ui source formatting intact.
+src/components/ui/

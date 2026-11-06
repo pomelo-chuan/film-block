@@ -1,135 +1,1022 @@
-import React, {useEffect,useMemo,useRef,useState} from 'react';
-import {DndContext,MouseSensor,TouchSensor,KeyboardSensor,useSensor,useSensors,closestCenter,type DragEndEvent} from '@dnd-kit/core';
-import {SortableContext,horizontalListSortingStrategy,sortableKeyboardCoordinates,arrayMove} from '@dnd-kit/sortable';
-import {SortablePhoto} from '@/components/sortable-photo';
-import {createRoot} from 'react-dom/client';
-import {ArrowLeft,ArrowRight,Check,Download,Film,Layers,LoaderCircle,Moon,Sun,Plus,Trash2,X,Settings2,Palette,Type,CalendarDays,Images,LayoutGrid,Image as ImageIcon} from 'lucide-react';
-import {defaults,presets,fonts,fontLabels,type Settings} from './film';
-import '@fontsource/silkscreen/latin-400.css';
-import '@fontsource/press-start-2p/latin-400.css';
-import '@fontsource/doto/latin-400.css';
-import {readLettering,saveLettering} from './lettering';
-import {getInitialTheme,applyTheme,rememberTheme,type Theme} from './theme';
-import {exportOptions,readExportOption,rememberExportOption,getExportOption} from './export';
-import {contactDefaults,contactPages,orderByCaptureDate,type ContactSettings} from './contact';
-import {ContactPreview} from '@/components/contact-preview';
-import {ContactControls} from '@/components/contact-settings';
-import {collageDefaults,collagePages,type CollageSettings} from './collage';
-import {PreviewCarousel} from '@/components/preview-carousel';
-import {CollagePreview} from '@/components/collage-preview';
-import {CollageControls} from '@/components/collage-settings';
-import {PhotoExport} from '@/components/photo-export';
-import {Preview,type Photo} from '@/components/film-preview';
-import {Button} from '@/components/ui/button';
-import {Input} from '@/components/ui/input';
-import {Label} from '@/components/ui/label';
-import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/ui/select';
-import {Switch} from '@/components/ui/switch';
-import {Slider} from '@/components/ui/slider';
-import {Tabs,TabsList,TabsTrigger,TabsContent} from '@/components/ui/tabs';
-import {ToggleGroup,ToggleGroupItem} from '@/components/ui/toggle-group';
-import {Checkbox} from '@/components/ui/checkbox';
-import {Badge} from '@/components/ui/badge';
-import {Separator} from '@/components/ui/separator';
-import {Sheet,SheetContent,SheetHeader,SheetTitle,SheetDescription,SheetClose} from '@/components/ui/sheet';
-import {Alert,AlertDescription} from '@/components/ui/alert';
-import {cn} from '@/lib/utils';
-import {readCaptureDate,formatCaptureDate,formatStampDate,dateFormats} from './photo-date';
-import {dateFonts,dateFontLabels} from './date-stamp';
-import './style.css';
-type EditorPanel='contact'|'layout'|'film'|'base'|'text'|'date'|'export';
-function App(){
- const [mode,setMode]=useState<'single'|'collage'|'contact'>('single');
- const [contact,setContact]=useState<ContactSettings>(contactDefaults);
- function changeContact(patch:Partial<ContactSettings>){const next={...contact,...patch};setContact(next);const at=contactPages(target,next).findIndex(sheet=>sheet.some(photo=>photo.id===active));setPage(Math.max(0,at));}
- const [collage,setCollage]=useState<CollageSettings>(collageDefaults),[page,setPage]=useState(0);
- function changeCollage(patch:Partial<CollageSettings>){setCollage(value=>({...value,...patch}));if(patch.slides!==undefined)setPage(0);}
- function movePhoto(direction:number){const order=mode!=='single'&&scope==='selected'?photos.filter(photo=>selected.includes(photo.id)):photos,from=order.findIndex(photo=>photo.id===active),to=from+direction;if(from<0||to<0||to>=order.length)return;const a=photos.indexOf(order[from]),b=photos.indexOf(order[to]),next=[...photos];[next[a],next[b]]=[next[b],next[a]];applyPhotoOrder(next);}
+import { FeatureBoundary } from "@/components/feature-boundary";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+} from "react";
+import { createRoot } from "react-dom/client";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Download,
+  Film,
+  Layers,
+  LoaderCircle,
+  Moon,
+  Sun,
+  Trash2,
+  X,
+  Settings2,
+  Palette,
+  Type,
+  CalendarDays,
+  Images,
+  LayoutGrid,
+  Image as ImageIcon,
+} from "lucide-react";
+import { defaults, type Settings } from "./film";
+import "@fontsource/silkscreen/latin-400.css";
+import "@fontsource/press-start-2p/latin-400.css";
+import "@fontsource/doto/latin-400.css";
+import { readLettering, saveLettering } from "./lettering";
+import {
+  getInitialTheme,
+  applyTheme,
+  rememberTheme,
+  type Theme,
+} from "./theme";
+import { readExportOption, rememberExportOption } from "./export";
+import {
+  contactDefaults,
+  contactPages,
+  orderByCaptureDate,
+  type ContactSettings,
+} from "./contact";
+import { ContactPreview } from "@/components/contact-preview";
+import { collageDefaults, collagePages, type CollageSettings } from "./collage";
+import { PreviewCarousel } from "@/components/preview-carousel";
+import { CollagePreview } from "@/components/collage-preview";
+import { Preview } from "@/components/film-preview";
+import type { Photo } from "@/types/photo";
+import { loadPhoto, releasePhoto } from "./images";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
- const [panel,setPanel]=useState<EditorPanel>('film'),[panelOpen,setPanelOpen]=useState(false);
- const [lastTool,setLastTool]=useState<Exclude<EditorPanel,'export'>>('film');
- const panelTrigger=useRef<HTMLElement|null>(null);
- function openPanel(value:EditorPanel,trigger:HTMLElement){panelTrigger.current=trigger;setPanel(value);if(value!=='export')setLastTool(value);setPanelOpen(true);}
- const [manageOpen,setManageOpen]=useState(false);
- const [exportOption,setExportOption]=useState(readExportOption);
- const [theme,setTheme]=useState<Theme>(getInitialTheme);
- useEffect(()=>{applyTheme(theme);},[theme]);
- function toggleTheme(){const next=theme==='dark'?'light':'dark';setTheme(next);rememberTheme(next);}
- const [photos,setPhotos]=useState<Photo[]>([]),[selected,setSelected]=useState<string[]>([]),[active,setActive]=useState<string>(''),[settings,setSettings]=useState<Settings>(()=>({...defaults,...readLettering()})),[scope,setScope]=useState<'all'|'selected'>('all'),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[drag,setDrag]=useState(false);
- const managerTrigger=useRef<HTMLButtonElement>(null),addTrigger=useRef<HTMLButtonElement>(null);
- const input=useRef<HTMLInputElement>(null),urls=useRef(new Set<string>());const current=photos.find(p=>p.id===active);const shown=current?.settings??settings;const index=Math.max(0,photos.findIndex(p=>p.id===active));
- useEffect(()=>{saveLettering(settings);},[settings]);
- useEffect(()=>()=>{urls.current.forEach(url=>URL.revokeObjectURL(url));},[]);
- useEffect(()=>{if(!message)return;const t=setTimeout(()=>setMessage(''),6500);return()=>clearTimeout(t);},[message]);
- function change(patch:Partial<Settings>){if(scope==='selected'&&photos.length&&!selected.length){setMessage('请先勾选要调整的照片');return;}setSettings(s=>({...s,...patch}));setPhotos(ps=>ps.map(p=>scope==='all'||selected.includes(p.id)?{...p,settings:{...p.settings,...patch}}:p));}
- async function upload(files:FileList|File[]){
-  if(busy)return;
-  setBusy(true);let failed=0;const added:Photo[]=[];
-  for(const file of Array.from(files)){
-   if(!file.type.startsWith('image/')){failed++;continue;}
-   const url=URL.createObjectURL(file);const image=new Image();image.src=url;
-   try{const [,captureDate]=await Promise.all([image.decode(),readCaptureDate(file)]);if(image.naturalWidth*image.naturalHeight>100000000)throw Error();urls.current.add(url);added.push({id:crypto.randomUUID(),name:file.name,image,url,captureDate,settings:{...settings}});}catch{failed++;URL.revokeObjectURL(url);}
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+import "./style.css";
+const ContactControls = lazy(() =>
+  import("@/components/contact-settings").then((module) => ({
+    default: module.ContactControls,
+  })),
+);
+const CollageControls = lazy(() =>
+  import("@/components/collage-settings").then((module) => ({
+    default: module.CollageControls,
+  })),
+);
+const PhotoExport = lazy(() =>
+  import("@/components/photo-export").then((module) => ({
+    default: module.PhotoExport,
+  })),
+);
+const FilmSettings = lazy(() =>
+  import("@/components/film-settings").then((module) => ({
+    default: module.FilmSettings,
+  })),
+);
+const PhotoLibrary = lazy(() =>
+  import("@/components/photo-library").then((module) => ({
+    default: module.PhotoLibrary,
+  })),
+);
+const PhotoManager = lazy(() =>
+  import("@/components/photo-manager").then((module) => ({
+    default: module.PhotoManager,
+  })),
+);
+
+type EditorPanel =
+  "contact" | "layout" | "film" | "base" | "text" | "date" | "export";
+function App() {
+  const [mode, setMode] = useState<"single" | "collage" | "contact">("single");
+  const [contact, setContact] = useState<ContactSettings>(contactDefaults);
+  function changeContact(patch: Partial<ContactSettings>) {
+    const next = { ...contact, ...patch };
+    setContact(next);
+    const at = contactPages(target, next).findIndex((sheet) =>
+      sheet.some((photo) => photo.id === active),
+    );
+    setPage(Math.max(0, at));
   }
-  setPhotos(ps=>[...ps,...added]);if(added.length){setActive(added[0].id);setSelected(added.map(p=>p.id));setManageOpen(false);setPanelOpen(false);}setBusy(false);setMessage(failed?`已导入 ${added.length} 张，${failed} 个文件无法读取（支持常见图片格式，单张不超过 1 亿像素）`:'');
- }
- function remove(id:string){const p=photos.find(p=>p.id===id);if(p){URL.revokeObjectURL(p.url);urls.current.delete(p.url);}const rest=photos.filter(p=>p.id!==id);setPhotos(rest);setSelected(s=>s.filter(v=>v!==id));if(active===id)setActive(rest[0]?.id??'');}
+  const [collage, setCollage] = useState<CollageSettings>(collageDefaults),
+    [page, setPage] = useState(0);
+  function changeCollage(patch: Partial<CollageSettings>) {
+    setCollage((value) => ({ ...value, ...patch }));
+    if (patch.slides !== undefined) setPage(0);
+  }
+  function movePhoto(direction: number) {
+    const order =
+        mode !== "single" && scope === "selected"
+          ? photos.filter((photo) => selected.includes(photo.id))
+          : photos,
+      from = order.findIndex((photo) => photo.id === active),
+      to = from + direction;
+    if (from < 0 || to < 0 || to >= order.length) return;
+    const a = photos.indexOf(order[from]),
+      b = photos.indexOf(order[to]),
+      next = [...photos];
+    [next[a], next[b]] = [next[b], next[a]];
+    applyPhotoOrder(next);
+  }
 
- const target=useMemo(()=>scope==='all'?photos:photos.filter(p=>selected.includes(p.id)),[photos,scope,selected]);
- const pages=useMemo(()=>mode==='contact'?contactPages(target,contact):collagePages(target,collage.slides),[target,collage.slides,contact,mode]);
- const pageIndex=Math.min(page,Math.max(0,pages.length-1));
- const collageIndex=target.findIndex(photo=>photo.id===active);
- function choosePage(next:number){setPage(next);const items=pages[next];if(items?.length&&!items.some(photo=>photo.id===active))setActive(items[0].id);}
- const choosePhoto=(id:string)=>{setActive(id);if(mode!=='single'){const at=pages.findIndex(items=>items.some(photo=>photo.id===id));if(at>=0)setPage(at);}if(scope==='selected')setSelected(ids=>ids.includes(id)?ids:[...ids,id]);};
- const togglePhoto=(id:string)=>{
-  const next=selected.includes(id)?selected.filter(v=>v!==id):[...selected,id];setSelected(next);
-  if(!selected.includes(id))setActive(id);else if(active===id&&next.length)setActive(next[0]);
- };
- const selectAll=()=>setSelected(selected.length===photos.length?[]:photos.map(p=>p.id));
- const sensors=useSensors(useSensor(MouseSensor,{activationConstraint:{distance:6}}),useSensor(TouchSensor,{activationConstraint:{delay:220,tolerance:8}}),useSensor(KeyboardSensor,{coordinateGetter:sortableKeyboardCoordinates}));
- function applyPhotoOrder(items:Photo[]){setPhotos(items);if(mode!=='single'){const visible=scope==='all'?items:items.filter(photo=>selected.includes(photo.id)),sheets=mode==='contact'?contactPages(visible,contact):collagePages(visible,collage.slides),at=sheets.findIndex(sheet=>sheet.some(photo=>photo.id===active));if(at>=0)setPage(at);}}
- function finishSort(event:DragEndEvent){if(busy||!event.over||event.active.id===event.over.id)return;const from=photos.findIndex(photo=>photo.id===event.active.id),to=photos.findIndex(photo=>photo.id===event.over?.id);if(from>=0&&to>=0)applyPhotoOrder(arrayMove(photos,from,to));}
- const reorderIndex=mode!=='single'?collageIndex:index,reorderCount=mode!=='single'?target.length:photos.length;
- const fieldClass='h-11! w-full text-sm';
- return <div className="editor-shell">
-  <header className="editor-header">
-   <a className="flex min-h-11 items-center" href="https://github.com/pomelo-chuan/film-block" aria-label="GitHub 仓库" title="GitHub 仓库" target="_blank" rel="noreferrer"><h1 className="brand text-xs font-semibold tracking-[.18em] text-muted-foreground sm:text-sm">FILM BLOCK</h1></a>
-   <div className="flex items-center justify-end gap-2">
-    <Button variant="ghost" size="icon" className="editor-round size-12" aria-label="打开设置" title="设置" aria-haspopup="dialog" aria-expanded={panelOpen&&panel!=='export'} onClick={event=>openPanel(mode==='contact'?'contact':mode==='collage'?'layout':lastTool==='layout'||lastTool==='contact'?'film':lastTool,event.currentTarget)}><Settings2 className="size-5"/></Button>
-   <Button variant="ghost" size="icon" className="editor-round size-12" aria-label="导出设置" title="导出照片" disabled={busy} onClick={event=>openPanel('export',event.currentTarget)}>{busy?<LoaderCircle className="size-5 animate-spin"/>:<Download className="size-6"/>}</Button>
-   </div>
-  </header>
-  <div className="editor-shortcuts" aria-label="快捷设置">
-   <Button variant="ghost" size="icon" className={cn('editor-round h-11 w-12',shown.textEnabled&&'text-primary')} aria-label={shown.textEnabled?'隐藏片基文字':'显示片基文字'} title="片基文字开关" aria-pressed={shown.textEnabled} onClick={()=>change({textEnabled:!shown.textEnabled})}><Type className="size-5"/></Button>
-   <Button variant="ghost" size="icon" className={cn('editor-round h-11 w-12',shown.dateStampEnabled&&'text-primary')} aria-label={shown.dateStampEnabled?'关闭日期印记':'开启日期印记'} title="日期印记开关" aria-pressed={shown.dateStampEnabled} onClick={()=>change({dateStampEnabled:!shown.dateStampEnabled})}><CalendarDays className="size-5"/></Button>
-   <Button variant="ghost" size="icon" className="editor-round h-11 w-12" aria-label={theme==='dark'?'切换浅色模式':'切换深色模式'} onClick={toggleTheme}>{theme==='dark'?<Sun className="size-5"/>:<Moon className="size-5"/>}</Button>
-   <span className="ml-auto min-w-0 truncate pr-1 text-[11px] text-muted-foreground" title={current?.name}>{current?.name??'示例预览'}</span>
-  </div>
-  <main className="studio editor-viewer" aria-label="照片预览">
-   <div className="editor-preview-tools"><span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">{mode!=='single'?`${target.length} 张照片 · ${current?.name??'添加照片开始创作'}`:current?`${current.image.naturalWidth} × ${current.image.naturalHeight}`:'添加照片开始创作'}</span>{current&&<><Button variant="ghost" size="icon" className="size-11 rounded-full" aria-label="前移当前照片" disabled={busy||reorderIndex<=0} onClick={()=>movePhoto(-1)}><ArrowLeft className="size-4"/></Button><Button variant="ghost" size="icon" className="size-11 rounded-full" aria-label="后移当前照片" disabled={busy||reorderIndex<0||reorderIndex>=reorderCount-1} onClick={()=>movePhoto(1)}><ArrowRight className="size-4"/></Button></>}{current&&<Button variant="ghost" size="icon" className="size-11 rounded-full text-muted-foreground hover:text-destructive" aria-label="删除当前照片" title={`删除 ${current.name}`} disabled={busy} onClick={()=>remove(current.id)}><Trash2 className="size-4"/></Button>}</div>
-   <div className={cn('preview-stage',drag&&'outline-2 -outline-offset-4 outline-primary')} onDragOver={event=>{event.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)} onDrop={event=>{event.preventDefault();setDrag(false);void upload(event.dataTransfer.files);}}>{mode==='contact'?pages.length?<PreviewCarousel key="contact" ids={pages.map((_,i)=>`roll-${i}`)} index={pageIndex} onSelect={choosePage} render={i=><ContactPreview photos={pages[i]} settings={contact} base={settings} index={i} active={active} onSelect={choosePhoto} label={i===pageIndex?'整卷展示预览':`第 ${i+1} 卷预览`}/>}/>:<div className="photo-mat"><ContactPreview photos={target} settings={contact} base={settings} index={0} active={active} onSelect={choosePhoto}/></div>:mode==='collage'?pages.length?<PreviewCarousel key="collage" ids={pages.map((_,i)=>`page-${i}`)} index={pageIndex} onSelect={choosePage} render={i=><CollagePreview photos={pages[i]} allPhotos={photos} settings={collage} label={i===pageIndex?'多张拼图预览':`第 ${i+1} 页拼图预览`}/>}/>:<div className="photo-mat"><CollagePreview photos={target} allPhotos={photos} settings={collage}/></div>:photos.length?<PreviewCarousel key="single" ids={photos.map(photo=>photo.id)} index={index} onSelect={i=>{if(photos[i])setActive(photos[i].id);}} render={i=><Preview photo={photos[i]} settings={photos[i].settings} index={i}/>}/>:<div className="photo-mat"><Preview settings={shown} index={index}/></div>}{drag&&<div className="absolute inset-0 flex items-center justify-center bg-background/90 text-sm text-primary">松开以导入照片</div>}</div>
-   <div className="editor-preview-navigation">{mode!=='single'?<><Button variant="ghost" size="icon" className="size-11 rounded-full" aria-label={mode==='contact'?'上一卷':'上一页拼图'} disabled={pageIndex===0} onClick={()=>choosePage(pageIndex-1)}><ArrowLeft className="size-4"/></Button><Button variant="ghost" className="h-11 gap-2 rounded-full text-xs text-muted-foreground" onClick={event=>openPanel(mode==='contact'?'contact':'layout',event.currentTarget)}><LayoutGrid className="size-4"/>{mode==='contact'?'整卷设置':'拼图布局'} · {pages.length?`${pageIndex+1} / ${pages.length}`:'0 / 0'}</Button><Button variant="ghost" size="icon" className="size-11 rounded-full" aria-label={mode==='contact'?'下一卷':'下一页拼图'} disabled={pageIndex>=pages.length-1} onClick={()=>choosePage(pageIndex+1)}><ArrowRight className="size-4"/></Button></>:<><Button variant="ghost" size="icon" className="size-11 rounded-full" aria-label="上一张" disabled={index===0||!photos.length} onClick={()=>setActive(photos[index-1].id)}><ArrowLeft className="size-4"/></Button><span className="text-[10px] tabular-nums text-muted-foreground">{photos.length?`${index+1} / ${photos.length}`:'示例'}</span><Button variant="ghost" size="icon" className="size-11 rounded-full" aria-label="下一张" disabled={index>=photos.length-1} onClick={()=>setActive(photos[index+1].id)}><ArrowRight className="size-4"/></Button></>}</div>
-  </main>
-  <section className="editor-library" aria-label="照片列表"><Input ref={input} type="file" accept="image/*" multiple hidden className="hidden" aria-label="上传照片" onChange={event=>{if(event.target.files)void upload(event.target.files);event.target.value='';}}/><DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={event=>{const id=String(event.active.id);setActive(id);if(mode!=='single'){const at=pages.findIndex(sheet=>sheet.some(photo=>photo.id===id));if(at>=0)setPage(at);}}} onDragEnd={finishSort} accessibility={{screenReaderInstructions:{draggable:'按空格键开始排序，使用方向键移动照片，再按空格键放下，按 Escape 取消。'}}}><div className="filmstrip" aria-label="照片缩略图">{photos.length>0&&<Button ref={managerTrigger} variant="ghost" className="size-[60px] shrink-0 flex-col gap-1 rounded-lg border bg-muted/40 text-muted-foreground" aria-label="管理照片" title="管理照片" disabled={busy} onClick={()=>setManageOpen(true)}><Layers className="size-5"/><span className="text-[10px]">选择</span></Button>}<Button ref={addTrigger} variant="ghost" className="editor-add size-[60px] shrink-0 rounded-lg border bg-muted/60 text-primary" aria-label="添加照片" title="添加照片" disabled={busy} onClick={()=>input.current?.click()}><Plus className="size-7!"/></Button><SortableContext items={photos.map(photo=>photo.id)} strategy={horizontalListSortingStrategy}>{photos.map((photo,i)=><SortablePhoto key={photo.id} photo={photo} index={i} active={active===photo.id} selected={selected.includes(photo.id)} disabled={busy} onChoose={()=>choosePhoto(photo.id)}/>)}</SortableContext></div></DndContext></section>
-  <nav className="editor-modes" aria-label="创作模式"><ToggleGroup type="single" value={mode} onValueChange={value=>{if(value==='single'||value==='collage'||value==='contact'){setMode(value);setPage(0);}}} className="w-full rounded-full border bg-muted/40 p-1" aria-label="选择创作模式"><ToggleGroupItem value="single" disabled={busy} className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"><ImageIcon className="size-4"/>单张</ToggleGroupItem><ToggleGroupItem value="collage" disabled={busy} className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"><Images className="size-4"/>多张拼图</ToggleGroupItem><ToggleGroupItem value="contact" disabled={busy} className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"><Film className="size-4"/>整卷展示</ToggleGroupItem></ToggleGroup></nav>
-  <Sheet open={panelOpen} onOpenChange={setPanelOpen}><SheetContent onCloseAutoFocus={event=>{event.preventDefault();panelTrigger.current?.focus();}} side="bottom" showCloseButton={false} className="mx-auto max-h-[85dvh] max-w-xl gap-0 rounded-t-3xl pb-[env(safe-area-inset-bottom)]"><SheetHeader className="pr-16"><SheetTitle>{panel==='export'?'导出照片':'编辑设置'}</SheetTitle><SheetDescription>{panel==='export'?mode==='contact'?`导出 ${pages.length} 卷 · ${target.length} 张照片`:mode==='collage'?`导出 ${pages.length} 页拼图 · ${target.length} 张照片`:`导出${scope==='all'?'全部':'选中'} ${target.length} 张照片`:'调整后实时应用到预览'}</SheetDescription></SheetHeader><SheetClose asChild><Button variant="ghost" size="icon" className="absolute top-3 right-3 size-11 rounded-full" aria-label="关闭设置"><X/></Button></SheetClose><div className="min-h-0 overflow-y-auto overscroll-contain">
-      <div className="px-3 py-2"><ToggleGroup type="single" value={scope} onValueChange={value=>{if(value!=='all'&&value!=='selected')return;setScope(value);if(value==='selected'&&selected.length&&!selected.includes(active))setActive(selected[0]);}} variant="outline" className="w-full" aria-label="调整范围"><ToggleGroupItem value="all" className="h-11 flex-1 text-xs" aria-label="统一调整"><Layers/>全部照片 {photos.length||''}</ToggleGroupItem><ToggleGroupItem value="selected" className="h-11 flex-1 text-xs" aria-label="仅选中">仅选中 {selected.length}</ToggleGroupItem></ToggleGroup></div>
-{panel==='export'?<>
-     <section className="export-dock space-y-3 px-4 pb-4" aria-label="导出照片">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-end gap-3"><div className="min-w-0 space-y-1.5"><Label htmlFor="export-quality" className="text-xs text-muted-foreground">导出质量</Label><Select disabled={busy} value={exportOption.id} onValueChange={value=>{const option=getExportOption(value);setExportOption(option);rememberExportOption(option.id);}}><SelectTrigger id="export-quality" aria-label="导出质量" className="h-11! w-full bg-background text-xs"><SelectValue>{exportOption.id==='balanced'?'均衡（推荐）':exportOption.label}</SelectValue></SelectTrigger><SelectContent>{exportOptions.map(option=><SelectItem key={option.id} value={option.id} className="min-h-12"><div className="flex flex-col gap-1"><span>{option.label}</span><span className="text-[10px] text-muted-foreground">{option.description}</span></div></SelectItem>)}</SelectContent></Select></div><PhotoExport contact={mode==='contact'?contact:undefined} base={settings} collage={mode==='collage'?collage:undefined} photos={photos} targets={target} option={exportOption} busy={busy} setBusy={setBusy} notify={setMessage} onAdd={()=>input.current?.click()}/></div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{exportOption.description}</p>
-     </section>
-</>:<>
-      <Tabs value={panel} onValueChange={value=>{setPanel(value as EditorPanel);setLastTool(value as Exclude<EditorPanel,'export'>);}} className="gap-0"><TabsList className="mx-3 h-12! w-[calc(100%-1.5rem)] rounded-lg" aria-label="胶片设置分类">{mode==='contact'&&<TabsTrigger value="contact" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><Film className="size-3.5"/>整卷</TabsTrigger>}{mode==='collage'&&<TabsTrigger value="layout" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><LayoutGrid className="size-3.5"/>布局</TabsTrigger>}{mode!=='contact'&&<TabsTrigger value="film" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><Film className="size-3.5"/>胶卷</TabsTrigger>}<TabsTrigger value="base" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><Palette className="size-3.5"/>片基</TabsTrigger><TabsTrigger value="text" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><Type className="size-3.5"/>文字</TabsTrigger><TabsTrigger value="date" className="min-h-11 gap-1 px-1 text-xs sm:text-sm"><CalendarDays className="size-3.5"/>日期</TabsTrigger></TabsList>
-       {mode==='contact'&&<TabsContent value="contact"><ContactControls settings={contact} change={changeContact} onSort={()=>{const ordered=orderByCaptureDate(photos);setPhotos(ordered);const first=ordered.find(photo=>scope==='all'||selected.includes(photo.id));if(first)setActive(first.id);setPage(0);}}/></TabsContent>}
-       {mode==='collage'&&<TabsContent value="layout"><CollageControls photo={target.find(photo=>photo.id===active)} settings={collage} change={changeCollage} count={target.length}/><div className="px-3 pb-3 text-xs leading-relaxed text-muted-foreground">长按照片条拖动排序，或点选照片后用预览上方的箭头调整顺序。片基、文字、日期继续使用各张照片的设置。</div></TabsContent>}
-       <TabsContent value="film" className="space-y-2 p-3"><div className="grid grid-cols-2 gap-2">{(['135','120'] as const).map(f=><Button key={f} variant="outline" className={cn('h-14 flex-col items-start gap-0.5 rounded-lg px-3 text-left',shown.format===f&&'border-primary bg-primary/8')} aria-label={`选择 ${f} 胶卷`} aria-pressed={shown.format===f} onClick={()=>change({format:f})}><span className="flex w-full items-center justify-between text-lg font-semibold">{f}{shown.format===f&&<Check className="size-4 text-primary"/>}</span><span className="text-[11px] font-normal text-muted-foreground">{f==='135'?'35 mm · 标准齿孔':'61 mm · 无齿孔'}</span></Button>)}</div></TabsContent>
-       <TabsContent value="base" className="space-y-3 p-3"><div className="flex flex-wrap gap-2" aria-label="片基颜色预设">{presets.map(p=><Button key={p.color} variant="ghost" size="icon" className={cn('size-11 rounded-full border-2 p-1',shown.color===p.color?'border-primary':'border-transparent')} aria-label={p.name} aria-pressed={shown.color===p.color} title={p.name} onClick={()=>change({color:p.color,ink:p.ink})}><span className="flex size-8 items-center justify-center rounded-full border border-black/10" style={{backgroundColor:p.color}}>{shown.color===p.color&&<Check className="size-4" style={{color:p.ink}}/>}</span></Button>)}<Label className="relative flex size-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed text-muted-foreground" title="自定义片基颜色"><Plus className="size-4"/><input type="color" aria-label="自定义片基颜色" className="absolute inset-0 size-full cursor-pointer opacity-0" value={shown.color} onChange={e=>change({color:e.target.value})}/></Label></div><div className="flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>{presets.find(p=>p.color===shown.color)?.name??'自定义颜色'}</span><code>{shown.color.toUpperCase()}</code></div><div className="space-y-2"><Label htmlFor="texture" className="text-xs">片基图案</Label><Select value={shown.texture} onValueChange={value=>change({texture:value as Settings['texture']})}><SelectTrigger id="texture" className={fieldClass} aria-label="片基图案"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="smooth" className="min-h-11">纯色片基</SelectItem><SelectItem value="grain" className="min-h-11">细颗粒纹理</SelectItem></SelectContent></Select></div></TabsContent>
-       <TabsContent value="text" className="space-y-3 p-3"><div className="flex min-h-11 items-center justify-between gap-3"><Label htmlFor="text-enabled" className="flex min-h-11 flex-1 cursor-pointer items-center">显示片基文字</Label><Switch id="text-enabled" aria-label="显示片基文字" checked={shown.textEnabled} onCheckedChange={checked=>change({textEnabled:checked})}/></div><fieldset disabled={!shown.textEnabled} className="min-w-0 space-y-3 disabled:opacity-45"><div className="space-y-2"><Label htmlFor="edge-text" className="text-xs">片基文字</Label><Input id="edge-text" className="h-11 text-base sm:text-sm" maxLength={80} value={shown.text} onChange={e=>change({text:e.target.value})} placeholder="写下相机、胶卷或一句心情"/></div><div className="space-y-2"><Label htmlFor="font" className="text-xs">像素字体</Label><Select disabled={!shown.textEnabled} value={shown.font} onValueChange={value=>change({font:value as Settings['font']})}><SelectTrigger id="font" className={fieldClass} aria-label="像素字体"><SelectValue/></SelectTrigger><SelectContent>{fonts.map(font=><SelectItem key={font} value={font} className="min-h-11">{fontLabels[font]}</SelectItem>)}</SelectContent></Select></div><div><div className="flex items-center justify-between text-xs"><Label htmlFor="font-size" className="text-xs">文字大小</Label><span className="tabular-nums text-muted-foreground">{shown.fontSize}</span></div><Slider id="font-size" aria-label="文字大小" className="h-11" disabled={!shown.textEnabled} min={18} max={40} step={1} value={[shown.fontSize]} onValueChange={([value])=>change({fontSize:value})}/></div><div className="flex items-center justify-between gap-2"><span className="text-[11px] text-muted-foreground">开源字体 · 支持中英文</span><Label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs">字色<input type="color" aria-label="文字颜色" className="size-9 cursor-pointer rounded-md border bg-transparent p-1" value={shown.ink} onChange={e=>change({ink:e.target.value})}/></Label></div></fieldset></TabsContent>
-       <TabsContent value="date" className="space-y-3 p-3"><div className="flex min-h-11 items-center justify-between gap-3"><Label htmlFor="date-stamp-enabled" className="flex min-h-11 flex-1 cursor-pointer items-center">自动印上照片日期</Label><Switch id="date-stamp-enabled" aria-label="自动印上照片日期" checked={shown.dateStampEnabled} onCheckedChange={checked=>change({dateStampEnabled:checked})}/></div><fieldset disabled={!shown.dateStampEnabled} className="grid grid-cols-2 gap-3 disabled:opacity-45"><div className="min-w-0 space-y-2"><Label htmlFor="date-font" className="text-xs">日期字体</Label><Select disabled={!shown.dateStampEnabled} value={shown.dateFont} onValueChange={value=>change({dateFont:value as Settings['dateFont']})}><SelectTrigger id="date-font" className={fieldClass} aria-label="日期字体"><SelectValue/></SelectTrigger><SelectContent>{dateFonts.map(font=><SelectItem key={font} value={font} className="min-h-11">{dateFontLabels[font]}</SelectItem>)}</SelectContent></Select></div><div className="min-w-0 space-y-2"><Label htmlFor="date-format" className="text-xs">日期格式</Label><Select disabled={!shown.dateStampEnabled} value={shown.dateFormat} onValueChange={value=>change({dateFormat:value as Settings['dateFormat']})}><SelectTrigger id="date-format" className={fieldClass} aria-label="日期格式"><SelectValue/></SelectTrigger><SelectContent>{dateFormats.map(format=><SelectItem key={format} value={format} className="min-h-11">{format}</SelectItem>)}</SelectContent></Select></div></fieldset>{current?.captureDate?<div className="space-y-2 rounded-xl border bg-muted/30 p-3"><div className="flex items-center gap-2 text-sm"><CalendarDays className="size-4 text-primary"/><time dateTime={formatCaptureDate(current.captureDate)}>{formatCaptureDate(current.captureDate)}</time><Badge variant="secondary" className="ml-auto text-[10px]">{current.captureDate.source==='DateTimeOriginal'?'拍摄日期':'数字化日期'}</Badge></div><p className="text-xs text-muted-foreground">{shown.dateStampEnabled?'印记：'+formatStampDate(current.captureDate,shown.dateFormat)+' · 右下角':'本张日期印记已关闭'}</p></div>:<div className="rounded-xl border border-dashed bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">{current?'未读取到照片日期，本张不会添加日期印记。':'上传含日期信息的照片后自动显示日期印记。'}</div>}</TabsContent>
-      </Tabs>
-</>}
-</div></SheetContent></Sheet>
-  <Sheet open={manageOpen} onOpenChange={setManageOpen}><SheetContent onCloseAutoFocus={event=>{event.preventDefault();(!managerTrigger.current?.disabled?managerTrigger.current:addTrigger.current)?.focus();}} side="bottom" showCloseButton={false} className="mx-auto max-h-[85dvh] max-w-3xl gap-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)]"><SheetHeader className="pr-16"><SheetTitle>管理照片</SheetTitle><SheetDescription>已选择 {selected.length} / {photos.length} 张 · 选择照片后可单独调整</SheetDescription></SheetHeader><SheetClose asChild><Button variant="ghost" size="icon" className="absolute top-3 right-3 size-11" aria-label="关闭照片管理"><X/></Button></SheetClose><Separator/><div className="flex items-center justify-between gap-3 px-4 py-2"><Button variant="ghost" className="h-11 px-2" onClick={selectAll}>{selected.length===photos.length?'取消全选':'全选'}</Button><Button variant="outline" className="h-11" disabled={busy} onClick={()=>input.current?.click()}><Plus/>添加照片</Button></div><div className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-4"><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{photos.map((p,i)=><article key={p.id} className={cn('overflow-hidden rounded-xl border bg-muted/30',active===p.id&&'border-primary')}><Button variant="ghost" className="h-32 w-full rounded-none p-3" aria-label={`预览 ${p.name}`} onClick={()=>{choosePhoto(p.id);setManageOpen(false);}}><Preview photo={p} settings={p.settings} index={i}/></Button><div className="flex min-h-12 items-center border-t"><Label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 pl-3" htmlFor={`manage-${p.id}`}><Checkbox id={`manage-${p.id}`} className="size-5 shrink-0" aria-label={`选择 ${p.name}`} checked={selected.includes(p.id)} onCheckedChange={()=>togglePhoto(p.id)}/><span className="min-w-0 truncate text-xs">{p.name}</span></Label><Button variant="ghost" size="icon" className="size-11 shrink-0 text-muted-foreground hover:text-destructive" aria-label={`删除 ${p.name}`} disabled={busy} onClick={()=>remove(p.id)}><Trash2 className="size-4"/></Button></div></article>)}</div></div></SheetContent></Sheet>
-  {message&&<Alert role="status" aria-live="polite" className="fixed right-3 bottom-[calc(9rem+env(safe-area-inset-bottom))] left-3 z-[60] mx-auto w-auto max-w-md pr-14 shadow-lg lg:right-6 lg:bottom-6 lg:left-auto"><AlertDescription className="text-xs leading-relaxed text-foreground">{message}</AlertDescription><Button variant="ghost" size="icon" className="absolute top-0.5 right-1 size-11" aria-label="关闭提示" onClick={()=>setMessage('')}><X/></Button></Alert>}
- </div>;
+  const [panel, setPanel] = useState<EditorPanel>("film"),
+    [panelOpen, setPanelOpen] = useState(false);
+  const [lastTool, setLastTool] =
+    useState<Exclude<EditorPanel, "export">>("film");
+  const panelTrigger = useRef<HTMLElement | null>(null);
+  function openPanel(value: EditorPanel, trigger: HTMLElement) {
+    panelTrigger.current = trigger;
+    setPanel(value);
+    if (value !== "export") setLastTool(value);
+    setPanelOpen(true);
+  }
+  const [manageOpen, setManageOpen] = useState(false);
+  const [exportOption, setExportOption] = useState(readExportOption);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    rememberTheme(next);
+  }
+  const [photos, setPhotos] = useState<Photo[]>([]),
+    [selected, setSelected] = useState<string[]>([]),
+    [active, setActive] = useState<string>(""),
+    [settings, setSettings] = useState<Settings>(() => ({
+      ...defaults,
+      ...readLettering(),
+    })),
+    [scope, setScope] = useState<"all" | "selected">("all"),
+    [busy, setBusy] = useState(false),
+    [message, setMessage] = useState(""),
+    [drag, setDrag] = useState(false);
+  const managerTrigger = useRef<HTMLButtonElement>(null),
+    addTrigger = useRef<HTMLButtonElement>(null);
+  const input = useRef<HTMLInputElement>(null),
+    resources = useRef(new Map<string, Photo>());
+  const current = photos.find((p) => p.id === active);
+  const shown = current?.settings ?? settings;
+  const index = Math.max(
+    0,
+    photos.findIndex((p) => p.id === active),
+  );
+  useEffect(() => {
+    saveLettering(settings);
+  }, [settings]);
+  useEffect(
+    () => () => {
+      resources.current.forEach(releasePhoto);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(""), 6500);
+    return () => clearTimeout(t);
+  }, [message]);
+  function change(patch: Partial<Settings>) {
+    if (scope === "selected" && photos.length && !selected.length) {
+      setMessage("请先勾选要调整的照片");
+      return;
+    }
+    setSettings((s) => ({ ...s, ...patch }));
+    setPhotos((ps) =>
+      ps.map((p) =>
+        scope === "all" || selected.includes(p.id)
+          ? { ...p, settings: { ...p.settings, ...patch } }
+          : p,
+      ),
+    );
+  }
+  async function upload(files: FileList | File[]) {
+    if (busy) return;
+    setBusy(true);
+    let failed = 0;
+    const added: Photo[] = [];
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) {
+        failed++;
+        continue;
+      }
+      try {
+        const photo = await loadPhoto(file, settings);
+        resources.current.set(photo.id, photo);
+        added.push(photo);
+      } catch {
+        failed++;
+      }
+    }
+    setPhotos((ps) => [...ps, ...added]);
+    if (added.length) {
+      setActive(added[0].id);
+      setSelected(added.map((p) => p.id));
+      setManageOpen(false);
+      setPanelOpen(false);
+    }
+    setBusy(false);
+    setMessage(
+      failed
+        ? `已导入 ${added.length} 张，${failed} 个文件无法读取（支持常见图片格式，单张不超过 1 亿像素）`
+        : "",
+    );
+  }
+  function remove(id: string) {
+    const p = photos.find((p) => p.id === id);
+    if (p) {
+      releasePhoto(p);
+      resources.current.delete(p.id);
+    }
+    const rest = photos.filter((p) => p.id !== id);
+    setPhotos(rest);
+    setSelected((s) => s.filter((v) => v !== id));
+    if (active === id) setActive(rest[0]?.id ?? "");
+  }
+
+  const target = useMemo(
+    () =>
+      scope === "all" ? photos : photos.filter((p) => selected.includes(p.id)),
+    [photos, scope, selected],
+  );
+  const pages = useMemo(
+    () =>
+      mode === "contact"
+        ? contactPages(target, contact)
+        : collagePages(target, collage.slides),
+    [target, collage.slides, contact, mode],
+  );
+  const pageIndex = Math.min(page, Math.max(0, pages.length - 1));
+  const collageIndex = target.findIndex((photo) => photo.id === active);
+  function choosePage(next: number) {
+    setPage(next);
+    const items = pages[next];
+    if (items?.length && !items.some((photo) => photo.id === active))
+      setActive(items[0].id);
+  }
+  const choosePhoto = (id: string) => {
+    setActive(id);
+    if (mode !== "single") {
+      const at = pages.findIndex((items) =>
+        items.some((photo) => photo.id === id),
+      );
+      if (at >= 0) setPage(at);
+    }
+    if (scope === "selected")
+      setSelected((ids) => (ids.includes(id) ? ids : [...ids, id]));
+  };
+  const togglePhoto = (id: string) => {
+    const next = selected.includes(id)
+      ? selected.filter((v) => v !== id)
+      : [...selected, id];
+    setSelected(next);
+    if (!selected.includes(id)) setActive(id);
+    else if (active === id && next.length) setActive(next[0]);
+  };
+  const selectAll = () =>
+    setSelected(
+      selected.length === photos.length ? [] : photos.map((p) => p.id),
+    );
+
+  function applyPhotoOrder(items: Photo[]) {
+    setPhotos(items);
+    if (mode !== "single") {
+      const visible =
+          scope === "all"
+            ? items
+            : items.filter((photo) => selected.includes(photo.id)),
+        sheets =
+          mode === "contact"
+            ? contactPages(visible, contact)
+            : collagePages(visible, collage.slides),
+        at = sheets.findIndex((sheet) =>
+          sheet.some((photo) => photo.id === active),
+        );
+      if (at >= 0) setPage(at);
+    }
+  }
+  function finishSort(fromId: string, toId: string) {
+    if (busy || fromId === toId) return;
+    const from = photos.findIndex((photo) => photo.id === fromId),
+      to = photos.findIndex((photo) => photo.id === toId);
+    if (from < 0 || to < 0) return;
+    const next = [...photos],
+      item = next.splice(from, 1)[0];
+    next.splice(to, 0, item);
+    applyPhotoOrder(next);
+  }
+  const reorderIndex = mode !== "single" ? collageIndex : index,
+    reorderCount = mode !== "single" ? target.length : photos.length;
+  return (
+    <div className="editor-shell">
+      <header className="editor-header">
+        <a
+          className="flex min-h-11 items-center"
+          href="https://github.com/pomelo-chuan/film-block"
+          aria-label="GitHub 仓库"
+          title="GitHub 仓库"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <h1 className="brand text-xs font-semibold tracking-[.18em] text-muted-foreground sm:text-sm">
+            FILM BLOCK
+          </h1>
+        </a>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="editor-round size-12"
+            aria-label="打开设置"
+            title="设置"
+            aria-haspopup="dialog"
+            aria-expanded={panelOpen && panel !== "export"}
+            onClick={(event) =>
+              openPanel(
+                mode === "contact"
+                  ? "contact"
+                  : mode === "collage"
+                    ? "layout"
+                    : lastTool === "layout" || lastTool === "contact"
+                      ? "film"
+                      : lastTool,
+                event.currentTarget,
+              )
+            }
+          >
+            <Settings2 className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="editor-round size-12"
+            aria-label="导出设置"
+            title="导出照片"
+            disabled={busy}
+            onClick={(event) => openPanel("export", event.currentTarget)}
+          >
+            {busy ? (
+              <LoaderCircle className="size-5 animate-spin" />
+            ) : (
+              <Download className="size-6" />
+            )}
+          </Button>
+        </div>
+      </header>
+      <div className="editor-shortcuts" aria-label="快捷设置">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "editor-round h-11 w-12",
+            shown.textEnabled && "text-primary",
+          )}
+          aria-label={shown.textEnabled ? "隐藏片基文字" : "显示片基文字"}
+          title="片基文字开关"
+          aria-pressed={shown.textEnabled}
+          onClick={() => change({ textEnabled: !shown.textEnabled })}
+        >
+          <Type className="size-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "editor-round h-11 w-12",
+            shown.dateStampEnabled && "text-primary",
+          )}
+          aria-label={shown.dateStampEnabled ? "关闭日期印记" : "开启日期印记"}
+          title="日期印记开关"
+          aria-pressed={shown.dateStampEnabled}
+          onClick={() => change({ dateStampEnabled: !shown.dateStampEnabled })}
+        >
+          <CalendarDays className="size-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="editor-round h-11 w-12"
+          aria-label={theme === "dark" ? "切换浅色模式" : "切换深色模式"}
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? (
+            <Sun className="size-5" />
+          ) : (
+            <Moon className="size-5" />
+          )}
+        </Button>
+        <span
+          className="ml-auto min-w-0 truncate pr-1 text-[11px] text-muted-foreground"
+          title={current?.name}
+        >
+          {current?.name ?? "示例预览"}
+        </span>
+      </div>
+      <main className="studio editor-viewer" aria-label="照片预览">
+        <div className="editor-preview-tools">
+          <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">
+            {mode !== "single"
+              ? `${target.length} 张照片 · ${current?.name ?? "添加照片开始创作"}`
+              : current
+                ? `${current.width} × ${current.height}`
+                : "添加照片开始创作"}
+          </span>
+          {current && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-full"
+                aria-label="前移当前照片"
+                disabled={busy || reorderIndex <= 0}
+                onClick={() => movePhoto(-1)}
+              >
+                <ArrowLeft className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-full"
+                aria-label="后移当前照片"
+                disabled={
+                  busy || reorderIndex < 0 || reorderIndex >= reorderCount - 1
+                }
+                onClick={() => movePhoto(1)}
+              >
+                <ArrowRight className="size-4" />
+              </Button>
+            </>
+          )}
+          {current && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 rounded-full text-muted-foreground hover:text-destructive"
+              aria-label="删除当前照片"
+              title={`删除 ${current.name}`}
+              disabled={busy}
+              onClick={() => remove(current.id)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
+        </div>
+        <div
+          className={cn(
+            "preview-stage",
+            drag && "outline-2 -outline-offset-4 outline-primary",
+          )}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDrag(false);
+            void upload(event.dataTransfer.files);
+          }}
+        >
+          {mode === "contact" ? (
+            pages.length ? (
+              <PreviewCarousel
+                key="contact"
+                ids={pages.map((_, i) => `roll-${i}`)}
+                index={pageIndex}
+                onSelect={choosePage}
+                render={(i) => (
+                  <ContactPreview
+                    photos={pages[i]}
+                    settings={contact}
+                    base={settings}
+                    index={i}
+                    active={active}
+                    onSelect={choosePhoto}
+                    label={
+                      i === pageIndex ? "整卷展示预览" : `第 ${i + 1} 卷预览`
+                    }
+                  />
+                )}
+              />
+            ) : (
+              <div className="photo-mat">
+                <ContactPreview
+                  photos={target}
+                  settings={contact}
+                  base={settings}
+                  index={0}
+                  active={active}
+                  onSelect={choosePhoto}
+                />
+              </div>
+            )
+          ) : mode === "collage" ? (
+            pages.length ? (
+              <PreviewCarousel
+                key="collage"
+                ids={pages.map((_, i) => `page-${i}`)}
+                index={pageIndex}
+                onSelect={choosePage}
+                render={(i) => (
+                  <CollagePreview
+                    photos={pages[i]}
+                    allPhotos={photos}
+                    settings={collage}
+                    label={
+                      i === pageIndex
+                        ? "多张拼图预览"
+                        : `第 ${i + 1} 页拼图预览`
+                    }
+                  />
+                )}
+              />
+            ) : (
+              <div className="photo-mat">
+                <CollagePreview
+                  photos={target}
+                  allPhotos={photos}
+                  settings={collage}
+                />
+              </div>
+            )
+          ) : photos.length ? (
+            <PreviewCarousel
+              key="single"
+              ids={photos.map((photo) => photo.id)}
+              index={index}
+              onSelect={(i) => {
+                if (photos[i]) setActive(photos[i].id);
+              }}
+              render={(i) => (
+                <Preview
+                  photo={photos[i]}
+                  settings={photos[i].settings}
+                  index={i}
+                />
+              )}
+            />
+          ) : (
+            <div className="photo-mat">
+              <Preview settings={shown} index={index} />
+            </div>
+          )}
+          {drag && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/90 text-sm text-primary">
+              松开以导入照片
+            </div>
+          )}
+        </div>
+        <div className="editor-preview-navigation">
+          {mode !== "single" ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-full"
+                aria-label={mode === "contact" ? "上一卷" : "上一页拼图"}
+                disabled={pageIndex === 0}
+                onClick={() => choosePage(pageIndex - 1)}
+              >
+                <ArrowLeft className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-11 gap-2 rounded-full text-xs text-muted-foreground"
+                onClick={(event) =>
+                  openPanel(
+                    mode === "contact" ? "contact" : "layout",
+                    event.currentTarget,
+                  )
+                }
+              >
+                <LayoutGrid className="size-4" />
+                {mode === "contact" ? "整卷设置" : "拼图布局"} ·{" "}
+                {pages.length ? `${pageIndex + 1} / ${pages.length}` : "0 / 0"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-full"
+                aria-label={mode === "contact" ? "下一卷" : "下一页拼图"}
+                disabled={pageIndex >= pages.length - 1}
+                onClick={() => choosePage(pageIndex + 1)}
+              >
+                <ArrowRight className="size-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-full"
+                aria-label="上一张"
+                disabled={index === 0 || !photos.length}
+                onClick={() => setActive(photos[index - 1].id)}
+              >
+                <ArrowLeft className="size-4" />
+              </Button>
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {photos.length ? `${index + 1} / ${photos.length}` : "示例"}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-full"
+                aria-label="下一张"
+                disabled={index >= photos.length - 1}
+                onClick={() => setActive(photos[index + 1].id)}
+              >
+                <ArrowRight className="size-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </main>
+      <Input
+        ref={input}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        className="hidden"
+        aria-label="上传照片"
+        onChange={(event) => {
+          if (event.target.files) void upload(event.target.files);
+          event.target.value = "";
+        }}
+      />
+      <FeatureBoundary>
+        <Suspense
+          fallback={<div className="h-[68px]" aria-label="正在加载照片列表" />}
+        >
+          <PhotoLibrary
+            photos={photos}
+            selected={selected}
+            active={active}
+            busy={busy}
+            managerTrigger={managerTrigger}
+            addTrigger={addTrigger}
+            onManage={() => setManageOpen(true)}
+            onAdd={() => input.current?.click()}
+            onChoose={choosePhoto}
+            onActivate={(id) => {
+              setActive(id);
+              if (mode !== "single") {
+                const at = pages.findIndex((sheet) =>
+                  sheet.some((photo) => photo.id === id),
+                );
+                if (at >= 0) setPage(at);
+              }
+            }}
+            onReorder={finishSort}
+          />
+        </Suspense>
+      </FeatureBoundary>
+      <nav className="editor-modes" aria-label="创作模式">
+        <ToggleGroup
+          type="single"
+          value={mode}
+          onValueChange={(value) => {
+            if (
+              value === "single" ||
+              value === "collage" ||
+              value === "contact"
+            ) {
+              setMode(value);
+              setPage(0);
+            }
+          }}
+          className="w-full rounded-full border bg-muted/40 p-1"
+          aria-label="选择创作模式"
+        >
+          <ToggleGroupItem
+            value="single"
+            disabled={busy}
+            className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"
+          >
+            <ImageIcon className="size-4" />
+            单张
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="collage"
+            disabled={busy}
+            className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"
+          >
+            <Images className="size-4" />
+            多张拼图
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="contact"
+            disabled={busy}
+            className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"
+          >
+            <Film className="size-4" />
+            整卷展示
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </nav>
+      <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
+        <SheetContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            panelTrigger.current?.focus();
+          }}
+          side="bottom"
+          showCloseButton={false}
+          className="mx-auto max-h-[85dvh] max-w-xl gap-0 rounded-t-3xl pb-[env(safe-area-inset-bottom)]"
+        >
+          <SheetHeader className="pr-16">
+            <SheetTitle>
+              {panel === "export" ? "导出照片" : "编辑设置"}
+            </SheetTitle>
+            <SheetDescription>
+              {panel === "export"
+                ? mode === "contact"
+                  ? `导出 ${pages.length} 卷 · ${target.length} 张照片`
+                  : mode === "collage"
+                    ? `导出 ${pages.length} 页拼图 · ${target.length} 张照片`
+                    : `导出${scope === "all" ? "全部" : "选中"} ${target.length} 张照片`
+                : "调整后实时应用到预览"}
+            </SheetDescription>
+          </SheetHeader>
+          <SheetClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-3 right-3 size-11 rounded-full"
+              aria-label="关闭设置"
+            >
+              <X />
+            </Button>
+          </SheetClose>
+          <div className="min-h-0 overflow-y-auto overscroll-contain">
+            <div className="px-3 py-2">
+              <ToggleGroup
+                type="single"
+                value={scope}
+                onValueChange={(value) => {
+                  if (value !== "all" && value !== "selected") return;
+                  setScope(value);
+                  if (
+                    value === "selected" &&
+                    selected.length &&
+                    !selected.includes(active)
+                  )
+                    setActive(selected[0]);
+                }}
+                variant="outline"
+                className="w-full"
+                aria-label="调整范围"
+              >
+                <ToggleGroupItem
+                  value="all"
+                  className="h-11 flex-1 text-xs"
+                  aria-label="统一调整"
+                >
+                  <Layers />
+                  全部照片 {photos.length || ""}
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="selected"
+                  className="h-11 flex-1 text-xs"
+                  aria-label="仅选中"
+                >
+                  仅选中 {selected.length}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            {panel === "export" ? (
+              <>
+                <section
+                  className="export-dock space-y-3 px-4 pb-4"
+                  aria-label="导出照片"
+                >
+                  <div className="mx-auto grid max-w-7xl grid-cols-1 items-end gap-3">
+                    <FeatureBoundary>
+                      <Suspense
+                        fallback={
+                          <p className="py-3 text-xs text-muted-foreground">
+                            正在加载导出…
+                          </p>
+                        }
+                      >
+                        <PhotoExport
+                          contact={mode === "contact" ? contact : undefined}
+                          base={settings}
+                          collage={mode === "collage" ? collage : undefined}
+                          photos={photos}
+                          targets={target}
+                          option={exportOption}
+                          onOptionChange={(option) => {
+                            setExportOption(option);
+                            rememberExportOption(option.id);
+                          }}
+                          busy={busy}
+                          setBusy={setBusy}
+                          notify={setMessage}
+                          onAdd={() => input.current?.click()}
+                        />
+                      </Suspense>
+                    </FeatureBoundary>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {exportOption.description}
+                  </p>
+                </section>
+              </>
+            ) : (
+              <>
+                <Tabs
+                  value={panel}
+                  onValueChange={(value) => {
+                    setPanel(value as EditorPanel);
+                    setLastTool(value as Exclude<EditorPanel, "export">);
+                  }}
+                  className="gap-0"
+                >
+                  <TabsList
+                    className="mx-3 h-12! w-[calc(100%-1.5rem)] rounded-lg"
+                    aria-label="胶片设置分类"
+                  >
+                    {mode === "contact" && (
+                      <TabsTrigger
+                        value="contact"
+                        className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
+                      >
+                        <Film className="size-3.5" />
+                        整卷
+                      </TabsTrigger>
+                    )}
+                    {mode === "collage" && (
+                      <TabsTrigger
+                        value="layout"
+                        className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
+                      >
+                        <LayoutGrid className="size-3.5" />
+                        布局
+                      </TabsTrigger>
+                    )}
+                    {mode !== "contact" && (
+                      <TabsTrigger
+                        value="film"
+                        className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
+                      >
+                        <Film className="size-3.5" />
+                        胶卷
+                      </TabsTrigger>
+                    )}
+                    <TabsTrigger
+                      value="base"
+                      className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
+                    >
+                      <Palette className="size-3.5" />
+                      片基
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="text"
+                      className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
+                    >
+                      <Type className="size-3.5" />
+                      文字
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="date"
+                      className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
+                    >
+                      <CalendarDays className="size-3.5" />
+                      日期
+                    </TabsTrigger>
+                  </TabsList>
+                  {mode === "contact" && (
+                    <TabsContent value="contact">
+                      <FeatureBoundary>
+                        <Suspense
+                          fallback={
+                            <p className="p-3 text-xs">正在加载设置…</p>
+                          }
+                        >
+                          <ContactControls
+                            settings={contact}
+                            change={changeContact}
+                            onSort={() => {
+                              const ordered = orderByCaptureDate(photos);
+                              setPhotos(ordered);
+                              const first = ordered.find(
+                                (photo) =>
+                                  scope === "all" ||
+                                  selected.includes(photo.id),
+                              );
+                              if (first) setActive(first.id);
+                              setPage(0);
+                            }}
+                          />
+                        </Suspense>
+                      </FeatureBoundary>
+                    </TabsContent>
+                  )}
+                  {mode === "collage" && (
+                    <TabsContent value="layout">
+                      <FeatureBoundary>
+                        <Suspense
+                          fallback={
+                            <p className="p-3 text-xs">正在加载设置…</p>
+                          }
+                        >
+                          <CollageControls
+                            photo={target.find((photo) => photo.id === active)}
+                            settings={collage}
+                            change={changeCollage}
+                            count={target.length}
+                          />
+                        </Suspense>
+                      </FeatureBoundary>
+                      <div className="px-3 pb-3 text-xs leading-relaxed text-muted-foreground">
+                        长按照片条拖动排序，或点选照片后用预览上方的箭头调整顺序。片基、文字、日期继续使用各张照片的设置。
+                      </div>
+                    </TabsContent>
+                  )}
+                  <FeatureBoundary>
+                    <Suspense
+                      fallback={<p className="p-3 text-xs">正在加载设置…</p>}
+                    >
+                      <FilmSettings
+                        shown={shown}
+                        current={current}
+                        change={change}
+                      />
+                    </Suspense>
+                  </FeatureBoundary>
+                </Tabs>
+              </>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+      {manageOpen && (
+        <FeatureBoundary>
+          <Suspense fallback={null}>
+            <PhotoManager
+              open={manageOpen}
+              onOpenChange={setManageOpen}
+              photos={photos}
+              selected={selected}
+              active={active}
+              busy={busy}
+              onAdd={() => input.current?.click()}
+              onSelectAll={selectAll}
+              onChoose={choosePhoto}
+              onToggle={togglePhoto}
+              onRemove={remove}
+              returnFocus={() => {
+                (!managerTrigger.current?.disabled
+                  ? managerTrigger.current
+                  : addTrigger.current
+                )?.focus();
+              }}
+            />
+          </Suspense>
+        </FeatureBoundary>
+      )}
+      {message && (
+        <Alert
+          role="status"
+          aria-live="polite"
+          className="fixed right-3 bottom-[calc(9rem+env(safe-area-inset-bottom))] left-3 z-[60] mx-auto w-auto max-w-md pr-14 shadow-lg lg:right-6 lg:bottom-6 lg:left-auto"
+        >
+          <AlertDescription className="text-xs leading-relaxed text-foreground">
+            {message}
+          </AlertDescription>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-0.5 right-1 size-11"
+            aria-label="关闭提示"
+            onClick={() => setMessage("")}
+          >
+            <X />
+          </Button>
+        </Alert>
+      )}
+    </div>
+  );
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
