@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { geometry, loadDateFont, loadFilmFont, renderFilm } from "./film";
 import type { Photo } from "./types/photo";
 import { withPhotoImage } from "./images";
@@ -189,7 +190,7 @@ export async function renderCollage(
   canvas.width = Math.round(ratio >= 1 ? maxSize : maxSize * ratio);
   canvas.height = Math.round(ratio >= 1 ? maxSize / ratio : maxSize);
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw Error("浏览器不支持 Canvas");
+  if (!ctx) throw Error(t("浏览器不支持 Canvas"));
   ctx.fillStyle = s.background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   const aspects = photos.map((p) => {

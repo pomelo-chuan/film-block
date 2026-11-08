@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Check } from "lucide-react";
@@ -19,6 +21,7 @@ export function SortablePhoto({
   disabled: boolean;
   onChoose: () => void;
 }) {
+  useTranslation();
   const {
     attributes,
     listeners,
@@ -49,8 +52,12 @@ export function SortablePhoto({
         variant="ghost"
         disabled={disabled}
         className="thumbnail size-full touch-manipulation select-none rounded-none p-0.5"
-        aria-label={`预览 ${photo.name}`}
-        title={`${photo.name} · 长按拖动排序`}
+        aria-label={t("预览 {{value0}}", {
+          value0: photo.name,
+        })}
+        title={t("{{value0}} \u00B7 长按拖动排序", {
+          value0: photo.name,
+        })}
         onContextMenu={(event) => event.preventDefault()}
         onClick={onChoose}
       >

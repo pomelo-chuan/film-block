@@ -108,3 +108,11 @@ Vite base 已配置为 `/film-block/`。在仓库 Settings → Pages → Build a
 - `npm run format:check`：检查业务代码格式，保留 vendored shadcn/ui 源文件格式。
 
 CI 在发布前运行格式、单元、构建与浏览器测试，失败时上传浏览器诊断文件。安装浏览器可运行 `npx playwright install --with-deps chromium`；已有 Chromium 时可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定路径。系统相册菜单的实际保存仍需要在 iPhone 上确认。
+
+### 国际化
+
+界面使用 i18next / react-i18next，支持简体中文（`zh-CN`）、繁體中文（`zh-Hant`）与 English（`en`）。顶栏语言图标打开系统语言选择器，手动选择保存在 `film-block:language`；没有偏好时按浏览器语言识别，台湾、香港、澳门及 Hant 使用繁体，Hans 使用简体，其他不支持的语言回退到英文。本地存储受限时仍可即时切换。
+
+翻译覆盖设置、预设名称、照片管理、拼图、整卷、导出画质、通知与无障碍标签，英文数量使用单复数规则。切换时同步更新页面 `lang` 与描述，不修改照片、文件名、自定义片基文字、日期格式、胶片标签或导出文件名，也不触发照片重绘。
+
+语言资源位于 `src/i18n/`，使用自然语言键及插值参数，动态提示以整句翻译为主。新增文字需同步补齐三种资源；繁体资源可运行 `node scripts/translate-traditional.mjs` 生成，再检查地区用语。单元测试检查语言识别、存储降级、目录与插值完整性；浏览器测试检查切换缓存、中英文及繁体界面、移动端布局与用户文字保留。

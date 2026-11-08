@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { DateFormat } from "./photo-date";
 import { drawDateStamp, type DateFont } from "./date-stamp";
 import type { CaptureDate } from "./photo-date";
@@ -186,7 +187,7 @@ export function renderFilm(
   canvas.width = g.width;
   canvas.height = g.height;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("浏览器不支持 Canvas");
+  if (!ctx) throw Error(t("浏览器不支持 Canvas"));
   ctx.fillStyle = s.color;
   ctx.fillRect(0, 0, g.width, g.height);
   ctx.drawImage(image, g.x, g.y, w, h);

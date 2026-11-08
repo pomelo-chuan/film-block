@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { Download, LoaderCircle, Share2 } from "lucide-react";
 import { Label } from "./ui/label";
@@ -20,8 +22,11 @@ import {
   type ExportScene,
 } from "@/export-jobs";
 import { formatFileSize, type ExportOption } from "@/export";
-
-type Prepared = { file: File; url: string; thumbnailUrl: string };
+type Prepared = {
+  file: File;
+  url: string;
+  thumbnailUrl: string;
+};
 export function canSharePhotos(files: File[]) {
   try {
     return (
@@ -68,6 +73,7 @@ export function PhotoExport({
   notify: (message: string) => void;
   onAdd: () => void;
 }) {
+  useTranslation();
   const [prepared, setPrepared] = useState<Prepared[]>([]);
   const version = useRef(0);
   const targetIds = targets.map((photo) => photo.id).join(",");
@@ -115,7 +121,7 @@ export function PhotoExport({
         })),
       );
     } catch {
-      notify("照片处理失败，请减少照片数量或降低导出质量后重试");
+      notify(t("照片处理失败，请减少照片数量或降低导出质量后重试"));
     } finally {
       setBusy(false);
     }
@@ -125,7 +131,7 @@ export function PhotoExport({
     setBusy(true);
     try {
       await navigator.share({ files });
-      notify("分享操作已完成，请在相册中确认照片");
+      notify(t("分享操作已完成，请在相册中确认照片"));
     } catch (error) {
       if (!(
         error &&
@@ -133,7 +139,7 @@ export function PhotoExport({
         "name" in error &&
         error.name === "AbortError"
       ))
-        notify("无法打开系统分享，请尝试逐张分享，或打开下方大图长按存储");
+        notify(t("无法打开系统分享，请尝试逐张分享，或打开下方大图长按存储"));
     } finally {
       setBusy(false);
     }
@@ -145,9 +151,9 @@ export function PhotoExport({
         archive = new Zip();
       prepared.forEach(({ file }) => archive.file(file.name, file));
       download(await archive.generateAsync({ type: "blob" }), "film-block.zip");
-      notify("压缩包已开始下载");
+      notify(t("压缩包已开始下载"));
     } catch {
-      notify("压缩包下载失败，请尝试逐张保存");
+      notify(t("压缩包下载失败，请尝试逐张保存"));
     } finally {
       setBusy(false);
     }
@@ -161,7 +167,7 @@ export function PhotoExport({
           htmlFor="export-quality"
           className="text-xs text-muted-foreground"
         >
-          导出质量
+          {t("导出质量")}
         </Label>
         <Select
           disabled={busy}
@@ -170,20 +176,20 @@ export function PhotoExport({
         >
           <SelectTrigger
             id="export-quality"
-            aria-label="导出质量"
+            aria-label={t("导出质量")}
             className="h-11! w-full bg-background text-xs"
           >
             <SelectValue>
-              {option.id === "balanced" ? "均衡（推荐）" : option.label}
+              {option.id === "balanced" ? t("均衡（推荐）") : t(option.label)}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {exportOptions.map((item) => (
               <SelectItem key={item.id} value={item.id} className="min-h-12">
                 <div className="flex flex-col gap-1">
-                  <span>{item.label}</span>
+                  <span>{t(item.label)}</span>
                   <span className="text-[10px] text-muted-foreground">
-                    {item.description}
+                    {t(item.description)}
                   </span>
                 </div>
               </SelectItem>
@@ -203,22 +209,33 @@ export function PhotoExport({
             <Share2 className="size-4" />
           )}
           {busy
-            ? "正在准备照片…"
+            ? t("正在准备照片…")
             : photos.length
               ? contact
-                ? `准备保存 ${contactPages(targets, contact).length} 卷胶片`
+                ? t("准备保存 {{value0}} 卷胶片", {
+                    value0: contactPages(targets, contact).length,
+                    count: contactPages(targets, contact).length,
+                  })
                 : collage
-                  ? `准备保存 ${collagePages(targets, collage.slides).length} 页拼图`
-                  : `准备保存 ${targets.length} 张照片`
-              : "添加照片"}
+                  ? t("准备保存 {{value0}} 页拼图", {
+                      value0: collagePages(targets, collage.slides).length,
+                      count: collagePages(targets, collage.slides).length,
+                    })
+                  : t("准备保存 {{value0}} 张照片", {
+                      value0: targets.length,
+                      count: targets.length,
+                    })
+              : t("添加照片")}
         </Button>
       ) : (
         <>
           <div role="status" className="text-sm">
-            已准备 {prepared.length} 张 ·{" "}
-            {formatFileSize(
-              files.reduce((total, file) => total + file.size, 0),
-            )}
+            {t("已准备 {{count}} 张 · {{size}}", {
+              count: prepared.length,
+              size: formatFileSize(
+                files.reduce((total, file) => total + file.size, 0),
+              ),
+            })}
           </div>
           {shareable && (
             <Button
@@ -227,17 +244,22 @@ export function PhotoExport({
               onClick={() => void share(files)}
             >
               <Share2 className="size-4" />
-              保存到相册 / 分享
-              {prepared.length > 1 ? ` ${prepared.length} 张` : ""}
+              {t("保存到相册 / 分享")}
+              {prepared.length > 1
+                ? t(" {{value0}} 张", {
+                    value0: prepared.length,
+                    count: prepared.length,
+                  })
+                : ""}
             </Button>
           )}
           <p className="text-xs leading-relaxed text-muted-foreground">
             {shareable
-              ? "iPhone：在系统分享菜单选择「存储图像」，可一次保存多张。"
-              : "点击「打开大图」后，在 iPhone 上长按选择「存储到照片」。"}
-            取消分享后可再次尝试。
+              ? t("iPhone：在系统分享菜单选择「存储图像」，可一次保存多张。")
+              : t("点击「打开大图」后，在 iPhone 上长按选择「存储到照片」。")}
+            {t("取消分享后可再次尝试。")}
           </p>
-          <div className="grid grid-cols-2 gap-3" aria-label="待保存照片">
+          <div className="grid grid-cols-2 gap-3" aria-label={t("待保存照片")}>
             {prepared.map(({ file, url, thumbnailUrl }) => (
               <article
                 key={file.name}
@@ -248,7 +270,9 @@ export function PhotoExport({
                   href={url}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label={`打开大图 ${file.name}`}
+                  aria-label={t("打开大图 {{value0}}", {
+                    value0: file.name,
+                  })}
                 >
                   <img
                     src={thumbnailUrl}
@@ -258,7 +282,7 @@ export function PhotoExport({
                     loading="lazy"
                   />
                   <span className="pointer-events-none absolute right-1 bottom-1 rounded bg-background/90 px-2 py-1 text-[10px]">
-                    打开大图
+                    {t("打开大图")}
                   </span>
                 </a>
                 <p
@@ -275,7 +299,7 @@ export function PhotoExport({
                     onClick={() => void share([file])}
                   >
                     <Share2 className="size-3.5" />
-                    保存这张
+                    {t("保存这张")}
                   </Button>
                 )}
                 <Button
@@ -285,7 +309,7 @@ export function PhotoExport({
                   onClick={() => download(file, file.name)}
                 >
                   <Download className="size-3.5" />
-                  下载这张
+                  {t("下载这张")}
                 </Button>
               </article>
             ))}
@@ -298,7 +322,7 @@ export function PhotoExport({
               onClick={() => void zip()}
             >
               <Download className="size-4" />
-              下载压缩包（备用）
+              {t("下载压缩包（备用）")}
             </Button>
           )}
         </>

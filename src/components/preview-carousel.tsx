@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, type ReactNode } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 export function PreviewCarousel({
@@ -11,6 +13,7 @@ export function PreviewCarousel({
   onSelect: (index: number) => void;
   render: (index: number) => ReactNode;
 }) {
+  useTranslation();
   const startIndex = useRef(index);
   const [viewport, api] = useEmblaCarousel({
     loop: false,
@@ -40,8 +43,8 @@ export function PreviewCarousel({
       className="preview-carousel"
       ref={viewport}
       role="region"
-      aria-roledescription="轮播"
-      aria-label="左右滑动预览"
+      aria-roledescription={t("轮播")}
+      aria-label={t("左右滑动预览")}
     >
       <div className="preview-carousel-track">
         {ids.map((id, i) => (
@@ -52,7 +55,7 @@ export function PreviewCarousel({
             aria-hidden={i !== index}
             inert={i !== index}
             role="group"
-            aria-roledescription="幻灯片"
+            aria-roledescription={t("幻灯片")}
             aria-label={`${i + 1} / ${ids.length}`}
           >
             <div className="photo-mat">

@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { memo, useCallback } from "react";
 import { loadFilmFont, loadDateFont, renderFilm, type Settings } from "@/film";
 import { useCanvasRenderer } from "@/hooks/use-canvas-renderer";
@@ -11,7 +13,7 @@ function demoImage() {
       image.onload = () => resolve(image);
       image.onerror = () => {
         demo = undefined;
-        reject(Error("示例图片加载失败"));
+        reject(Error(t("示例图片加载失败")));
       };
       image.src = import.meta.env.BASE_URL + "demo.webp";
     });
@@ -28,6 +30,7 @@ export const Preview = memo(function Preview({
   index: number;
   maxSize?: number;
 }) {
+  useTranslation();
   const image = photo?.image,
     captureDate = photo?.captureDate,
     width = photo?.width,
@@ -60,11 +63,17 @@ export const Preview = memo(function Preview({
         ref={ref}
         hidden={failed}
         style={failed ? { display: "none" } : undefined}
-        aria-label={photo ? `${photo.name} 的胶片边框预览` : "胶片边框示例预览"}
+        aria-label={
+          photo
+            ? t("{{value0}} 的胶片边框预览", {
+                value0: photo.name,
+              })
+            : t("胶片边框示例预览")
+        }
       />
       {failed && (
         <p role="alert" className="text-xs">
-          预览失败，请重试
+          {t("预览失败，请重试")}
         </p>
       )}
     </>

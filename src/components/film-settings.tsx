@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { Check, Plus, CalendarDays } from "lucide-react";
 import { presets, fonts, fontLabels, type Settings } from "@/film";
 import { dateFonts, dateFontLabels } from "@/date-stamp";
@@ -27,6 +29,7 @@ export function FilmSettings({
   current?: Photo;
   change: (patch: Partial<Settings>) => void;
 }) {
+  useTranslation();
   const fieldClass = "h-11! w-full text-sm";
   return (
     <>
@@ -40,7 +43,9 @@ export function FilmSettings({
                 "h-14 flex-col items-start gap-0.5 rounded-lg px-3 text-left",
                 shown.format === f && "border-primary bg-primary/8",
               )}
-              aria-label={`选择 ${f} 胶卷`}
+              aria-label={t("选择 {{value0}} 胶卷", {
+                value0: f,
+              })}
               aria-pressed={shown.format === f}
               onClick={() => change({ format: f })}
             >
@@ -51,14 +56,16 @@ export function FilmSettings({
                 )}
               </span>
               <span className="text-[11px] font-normal text-muted-foreground">
-                {f === "135" ? "35 mm · 标准齿孔" : "61 mm · 无齿孔"}
+                {f === "135"
+                  ? t("35 mm \u00B7 标准齿孔")
+                  : t("61 mm \u00B7 无齿孔")}
               </span>
             </Button>
           ))}
         </div>
       </TabsContent>
       <TabsContent value="base" className="space-y-3 p-3">
-        <div className="flex flex-wrap gap-2" aria-label="片基颜色预设">
+        <div className="flex flex-wrap gap-2" aria-label={t("片基颜色预设")}>
           {presets.map((p) => (
             <Button
               key={p.color}
@@ -70,9 +77,9 @@ export function FilmSettings({
                   ? "border-primary"
                   : "border-transparent",
               )}
-              aria-label={p.name}
+              aria-label={t(p.name)}
               aria-pressed={shown.color === p.color}
-              title={p.name}
+              title={t(p.name)}
               onClick={() => change({ color: p.color, ink: p.ink })}
             >
               <span
@@ -87,12 +94,12 @@ export function FilmSettings({
           ))}
           <Label
             className="relative flex size-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed text-muted-foreground"
-            title="自定义片基颜色"
+            title={t("自定义片基颜色")}
           >
             <Plus className="size-4" />
             <input
               type="color"
-              aria-label="自定义片基颜色"
+              aria-label={t("自定义片基颜色")}
               className="absolute inset-0 size-full cursor-pointer opacity-0"
               value={shown.color}
               onChange={(e) => change({ color: e.target.value })}
@@ -101,13 +108,16 @@ export function FilmSettings({
         </div>
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>
-            {presets.find((p) => p.color === shown.color)?.name ?? "自定义颜色"}
+            {t(
+              presets.find((p) => p.color === shown.color)?.name ??
+                "自定义颜色",
+            )}
           </span>
           <code>{shown.color.toUpperCase()}</code>
         </div>
         <div className="space-y-2">
           <Label htmlFor="texture" className="text-xs">
-            片基图案
+            {t("片基图案")}
           </Label>
           <Select
             value={shown.texture}
@@ -118,16 +128,16 @@ export function FilmSettings({
             <SelectTrigger
               id="texture"
               className={fieldClass}
-              aria-label="片基图案"
+              aria-label={t("片基图案")}
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="smooth" className="min-h-11">
-                纯色片基
+                {t("纯色片基")}
               </SelectItem>
               <SelectItem value="grain" className="min-h-11">
-                细颗粒纹理
+                {t("细颗粒纹理")}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -139,11 +149,11 @@ export function FilmSettings({
             htmlFor="text-enabled"
             className="flex min-h-11 flex-1 cursor-pointer items-center"
           >
-            显示片基文字
+            {t("显示片基文字")}
           </Label>
           <Switch
             id="text-enabled"
-            aria-label="显示片基文字"
+            aria-label={t("显示片基文字")}
             checked={shown.textEnabled}
             onCheckedChange={(checked) => change({ textEnabled: checked })}
           />
@@ -154,7 +164,7 @@ export function FilmSettings({
         >
           <div className="space-y-2">
             <Label htmlFor="edge-text" className="text-xs">
-              片基文字
+              {t("片基文字")}
             </Label>
             <Input
               id="edge-text"
@@ -162,12 +172,12 @@ export function FilmSettings({
               maxLength={80}
               value={shown.text}
               onChange={(e) => change({ text: e.target.value })}
-              placeholder="写下相机、胶卷或一句心情"
+              placeholder={t("写下相机、胶卷或一句心情")}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="font" className="text-xs">
-              像素字体
+              {t("像素字体")}
             </Label>
             <Select
               disabled={!shown.textEnabled}
@@ -179,14 +189,14 @@ export function FilmSettings({
               <SelectTrigger
                 id="font"
                 className={fieldClass}
-                aria-label="像素字体"
+                aria-label={t("像素字体")}
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {fonts.map((font) => (
                   <SelectItem key={font} value={font} className="min-h-11">
-                    {fontLabels[font]}
+                    {t(fontLabels[font])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -195,7 +205,7 @@ export function FilmSettings({
           <div>
             <div className="flex items-center justify-between text-xs">
               <Label htmlFor="font-size" className="text-xs">
-                文字大小
+                {t("文字大小")}
               </Label>
               <span className="tabular-nums text-muted-foreground">
                 {shown.fontSize}
@@ -203,7 +213,7 @@ export function FilmSettings({
             </div>
             <Slider
               id="font-size"
-              aria-label="文字大小"
+              aria-label={t("文字大小")}
               className="h-11"
               disabled={!shown.textEnabled}
               min={18}
@@ -215,13 +225,13 @@ export function FilmSettings({
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] text-muted-foreground">
-              开源字体 · 支持中英文
+              {t("开源字体 \u00B7 支持中英文")}
             </span>
             <Label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs">
-              字色
+              {t("字色")}
               <input
                 type="color"
-                aria-label="文字颜色"
+                aria-label={t("文字颜色")}
                 className="size-9 cursor-pointer rounded-md border bg-transparent p-1"
                 value={shown.ink}
                 onChange={(e) => change({ ink: e.target.value })}
@@ -236,11 +246,11 @@ export function FilmSettings({
             htmlFor="date-stamp-enabled"
             className="flex min-h-11 flex-1 cursor-pointer items-center"
           >
-            自动印上照片日期
+            {t("自动印上照片日期")}
           </Label>
           <Switch
             id="date-stamp-enabled"
-            aria-label="自动印上照片日期"
+            aria-label={t("自动印上照片日期")}
             checked={shown.dateStampEnabled}
             onCheckedChange={(checked) => change({ dateStampEnabled: checked })}
           />
@@ -251,7 +261,7 @@ export function FilmSettings({
         >
           <div className="min-w-0 space-y-2">
             <Label htmlFor="date-font" className="text-xs">
-              日期字体
+              {t("日期字体")}
             </Label>
             <Select
               disabled={!shown.dateStampEnabled}
@@ -263,14 +273,14 @@ export function FilmSettings({
               <SelectTrigger
                 id="date-font"
                 className={fieldClass}
-                aria-label="日期字体"
+                aria-label={t("日期字体")}
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {dateFonts.map((font) => (
                   <SelectItem key={font} value={font} className="min-h-11">
-                    {dateFontLabels[font]}
+                    {t(dateFontLabels[font])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -278,7 +288,7 @@ export function FilmSettings({
           </div>
           <div className="min-w-0 space-y-2">
             <Label htmlFor="date-format" className="text-xs">
-              日期格式
+              {t("日期格式")}
             </Label>
             <Select
               disabled={!shown.dateStampEnabled}
@@ -292,7 +302,7 @@ export function FilmSettings({
               <SelectTrigger
                 id="date-format"
                 className={fieldClass}
-                aria-label="日期格式"
+                aria-label={t("日期格式")}
               >
                 <SelectValue />
               </SelectTrigger>
@@ -315,23 +325,23 @@ export function FilmSettings({
               </time>
               <Badge variant="secondary" className="ml-auto text-[10px]">
                 {current.captureDate.source === "DateTimeOriginal"
-                  ? "拍摄日期"
-                  : "数字化日期"}
+                  ? t("拍摄日期")
+                  : t("数字化日期")}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               {shown.dateStampEnabled
-                ? "印记：" +
+                ? t("印记：") +
                   formatStampDate(current.captureDate, shown.dateFormat) +
-                  " · 右下角"
-                : "本张日期印记已关闭"}
+                  t(" \u00B7 右下角")
+                : t("本张日期印记已关闭")}
             </p>
           </div>
         ) : (
           <div className="rounded-xl border border-dashed bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
             {current
-              ? "未读取到照片日期，本张不会添加日期印记。"
-              : "上传含日期信息的照片后自动显示日期印记。"}
+              ? t("未读取到照片日期，本张不会添加日期印记。")
+              : t("上传含日期信息的照片后自动显示日期印记。")}
           </div>
         )}
       </TabsContent>

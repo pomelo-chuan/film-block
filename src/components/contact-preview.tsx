@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useCallback, useMemo } from "react";
 import { contactLayout, renderContact, type ContactSettings } from "@/contact";
 import { useCanvasRenderer } from "@/hooks/use-canvas-renderer";
@@ -11,7 +13,7 @@ export function ContactPreview({
   index,
   active,
   onSelect,
-  label = "整卷展示预览",
+  label = t("整卷展示预览"),
 }: {
   photos: Photo[];
   settings: ContactSettings;
@@ -21,6 +23,7 @@ export function ContactPreview({
   onSelect: (id: string) => void;
   label?: string;
 }) {
+  useTranslation();
   const draw = useCallback(
     (canvas: HTMLCanvasElement, cancelled: () => boolean) =>
       renderContact(canvas, photos, settings, base, 1600, index, cancelled),
@@ -37,8 +40,10 @@ export function ContactPreview({
   if (!photos.length)
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-center text-sm text-muted-foreground">
-        <span>添加照片，查看整卷胶片</span>
-        <span className="text-xs">连续胶片条 · 格号 · 整卷信息</span>
+        <span>{t("添加照片，查看整卷胶片")}</span>
+        <span className="text-xs">
+          {t("连续胶片条 \u00B7 格号 \u00B7 整卷信息")}
+        </span>
       </div>
     );
   return (
@@ -87,7 +92,7 @@ export function ContactPreview({
       )}
       {failed && (
         <p role="alert" className="text-sm">
-          整卷预览失败，请减少照片后重试
+          {t("整卷预览失败，请减少照片后重试")}
         </p>
       )}
     </>

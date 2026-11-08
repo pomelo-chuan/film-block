@@ -1,3 +1,6 @@
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { t, i18n } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { FeatureBoundary } from "@/components/feature-boundary";
 import React, {
   useEffect,
@@ -54,7 +57,6 @@ import type { Photo } from "@/types/photo";
 import { loadPhoto, releasePhoto } from "./images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -98,10 +100,10 @@ const PhotoManager = lazy(() =>
     default: module.PhotoManager,
   })),
 );
-
 type EditorPanel =
   "contact" | "layout" | "film" | "base" | "text" | "date" | "export";
 function App() {
+  useTranslation();
   const [mode, setMode] = useState<"single" | "collage" | "contact">("single");
   const [contact, setContact] = useState<ContactSettings>(contactDefaults);
   function changeContact(patch: Partial<ContactSettings>) {
@@ -132,7 +134,6 @@ function App() {
     [next[a], next[b]] = [next[b], next[a]];
     applyPhotoOrder(next);
   }
-
   const [panel, setPanel] = useState<EditorPanel>("film"),
     [panelOpen, setPanelOpen] = useState(false);
   const [lastTool, setLastTool] =
@@ -186,13 +187,20 @@ function App() {
     [],
   );
   useEffect(() => {
+    const clear = () => setMessage("");
+    i18n.on("languageChanged", clear);
+    return () => {
+      i18n.off("languageChanged", clear);
+    };
+  }, []);
+  useEffect(() => {
     if (!message) return;
     const t = setTimeout(() => setMessage(""), 6500);
     return () => clearTimeout(t);
   }, [message]);
   function change(patch: Partial<Settings>) {
     if (scope === "selected" && photos.length && !selected.length) {
-      setMessage("请先勾选要调整的照片");
+      setMessage(t("请先勾选要调整的照片"));
       return;
     }
     setSettings((s) => ({ ...s, ...patch }));
@@ -232,7 +240,14 @@ function App() {
     setBusy(false);
     setMessage(
       failed
-        ? `已导入 ${added.length} 张，${failed} 个文件无法读取（支持常见图片格式，单张不超过 1 亿像素）`
+        ? t(
+            "已导入 {{value0}} 张，{{value1}} 个文件无法读取（支持常见图片格式，单张不超过 1 亿像素）",
+            {
+              value0: added.length,
+              value1: failed,
+              count: added.length,
+            },
+          )
         : "",
     );
   }
@@ -247,7 +262,6 @@ function App() {
     setSelected((s) => s.filter((v) => v !== id));
     if (active === id) setActive(rest[0]?.id ?? "");
   }
-
   const target = useMemo(
     () =>
       scope === "all" ? photos : photos.filter((p) => selected.includes(p.id)),
@@ -291,7 +305,6 @@ function App() {
     setSelected(
       selected.length === photos.length ? [] : photos.map((p) => p.id),
     );
-
   function applyPhotoOrder(items: Photo[]) {
     setPhotos(items);
     if (mode !== "single") {
@@ -327,8 +340,8 @@ function App() {
         <a
           className="flex min-h-11 items-center"
           href="https://github.com/pomelo-chuan/film-block"
-          aria-label="GitHub 仓库"
-          title="GitHub 仓库"
+          aria-label={t("GitHub 仓库")}
+          title={t("GitHub 仓库")}
           target="_blank"
           rel="noreferrer"
         >
@@ -337,12 +350,13 @@ function App() {
           </h1>
         </a>
         <div className="flex items-center justify-end gap-2">
+          <LanguageSwitcher />
           <Button
             variant="ghost"
             size="icon"
             className="editor-round size-12"
-            aria-label="打开设置"
-            title="设置"
+            aria-label={t("打开设置")}
+            title={t("设置")}
             aria-haspopup="dialog"
             aria-expanded={panelOpen && panel !== "export"}
             onClick={(event) =>
@@ -364,8 +378,8 @@ function App() {
             variant="ghost"
             size="icon"
             className="editor-round size-12"
-            aria-label="导出设置"
-            title="导出照片"
+            aria-label={t("导出设置")}
+            title={t("导出照片")}
             disabled={busy}
             onClick={(event) => openPanel("export", event.currentTarget)}
           >
@@ -377,7 +391,7 @@ function App() {
           </Button>
         </div>
       </header>
-      <div className="editor-shortcuts" aria-label="快捷设置">
+      <div className="editor-shortcuts" aria-label={t("快捷设置")}>
         <Button
           variant="ghost"
           size="icon"
@@ -385,8 +399,8 @@ function App() {
             "editor-round h-11 w-12",
             shown.textEnabled && "text-primary",
           )}
-          aria-label={shown.textEnabled ? "隐藏片基文字" : "显示片基文字"}
-          title="片基文字开关"
+          aria-label={shown.textEnabled ? t("隐藏片基文字") : t("显示片基文字")}
+          title={t("片基文字开关")}
           aria-pressed={shown.textEnabled}
           onClick={() => change({ textEnabled: !shown.textEnabled })}
         >
@@ -399,8 +413,10 @@ function App() {
             "editor-round h-11 w-12",
             shown.dateStampEnabled && "text-primary",
           )}
-          aria-label={shown.dateStampEnabled ? "关闭日期印记" : "开启日期印记"}
-          title="日期印记开关"
+          aria-label={
+            shown.dateStampEnabled ? t("关闭日期印记") : t("开启日期印记")
+          }
+          title={t("日期印记开关")}
           aria-pressed={shown.dateStampEnabled}
           onClick={() => change({ dateStampEnabled: !shown.dateStampEnabled })}
         >
@@ -410,7 +426,7 @@ function App() {
           variant="ghost"
           size="icon"
           className="editor-round h-11 w-12"
-          aria-label={theme === "dark" ? "切换浅色模式" : "切换深色模式"}
+          aria-label={theme === "dark" ? t("切换浅色模式") : t("切换深色模式")}
           onClick={toggleTheme}
         >
           {theme === "dark" ? (
@@ -423,17 +439,21 @@ function App() {
           className="ml-auto min-w-0 truncate pr-1 text-[11px] text-muted-foreground"
           title={current?.name}
         >
-          {current?.name ?? "示例预览"}
+          {current?.name ?? t("示例预览")}
         </span>
       </div>
-      <main className="studio editor-viewer" aria-label="照片预览">
+      <main className="studio editor-viewer" aria-label={t("照片预览")}>
         <div className="editor-preview-tools">
           <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">
             {mode !== "single"
-              ? `${target.length} 张照片 · ${current?.name ?? "添加照片开始创作"}`
+              ? t("{{value0}} 张照片 \u00B7 {{value1}}", {
+                  value0: target.length,
+                  value1: current?.name ?? t("添加照片开始创作"),
+                  count: target.length,
+                })
               : current
                 ? `${current.width} × ${current.height}`
-                : "添加照片开始创作"}
+                : t("添加照片开始创作")}
           </span>
           {current && (
             <>
@@ -441,7 +461,7 @@ function App() {
                 variant="ghost"
                 size="icon"
                 className="size-11 rounded-full"
-                aria-label="前移当前照片"
+                aria-label={t("前移当前照片")}
                 disabled={busy || reorderIndex <= 0}
                 onClick={() => movePhoto(-1)}
               >
@@ -451,7 +471,7 @@ function App() {
                 variant="ghost"
                 size="icon"
                 className="size-11 rounded-full"
-                aria-label="后移当前照片"
+                aria-label={t("后移当前照片")}
                 disabled={
                   busy || reorderIndex < 0 || reorderIndex >= reorderCount - 1
                 }
@@ -466,8 +486,10 @@ function App() {
               variant="ghost"
               size="icon"
               className="size-11 rounded-full text-muted-foreground hover:text-destructive"
-              aria-label="删除当前照片"
-              title={`删除 ${current.name}`}
+              aria-label={t("删除当前照片")}
+              title={t("删除 {{value0}}", {
+                value0: current.name,
+              })}
               disabled={busy}
               onClick={() => remove(current.id)}
             >
@@ -507,7 +529,11 @@ function App() {
                     active={active}
                     onSelect={choosePhoto}
                     label={
-                      i === pageIndex ? "整卷展示预览" : `第 ${i + 1} 卷预览`
+                      i === pageIndex
+                        ? t("整卷展示预览")
+                        : t("第 {{value0}} 卷预览", {
+                            value0: i + 1,
+                          })
                     }
                   />
                 )}
@@ -538,8 +564,10 @@ function App() {
                     settings={collage}
                     label={
                       i === pageIndex
-                        ? "多张拼图预览"
-                        : `第 ${i + 1} 页拼图预览`
+                        ? t("多张拼图预览")
+                        : t("第 {{value0}} 页拼图预览", {
+                            value0: i + 1,
+                          })
                     }
                   />
                 )}
@@ -576,7 +604,7 @@ function App() {
           )}
           {drag && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 text-sm text-primary">
-              松开以导入照片
+              {t("松开以导入照片")}
             </div>
           )}
         </div>
@@ -587,7 +615,7 @@ function App() {
                 variant="ghost"
                 size="icon"
                 className="size-11 rounded-full"
-                aria-label={mode === "contact" ? "上一卷" : "上一页拼图"}
+                aria-label={mode === "contact" ? t("上一卷") : t("上一页拼图")}
                 disabled={pageIndex === 0}
                 onClick={() => choosePage(pageIndex - 1)}
               >
@@ -604,14 +632,14 @@ function App() {
                 }
               >
                 <LayoutGrid className="size-4" />
-                {mode === "contact" ? "整卷设置" : "拼图布局"} ·{" "}
+                {mode === "contact" ? t("整卷设置") : t("拼图布局")} ·{" "}
                 {pages.length ? `${pageIndex + 1} / ${pages.length}` : "0 / 0"}
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-11 rounded-full"
-                aria-label={mode === "contact" ? "下一卷" : "下一页拼图"}
+                aria-label={mode === "contact" ? t("下一卷") : t("下一页拼图")}
                 disabled={pageIndex >= pages.length - 1}
                 onClick={() => choosePage(pageIndex + 1)}
               >
@@ -624,20 +652,20 @@ function App() {
                 variant="ghost"
                 size="icon"
                 className="size-11 rounded-full"
-                aria-label="上一张"
+                aria-label={t("上一张")}
                 disabled={index === 0 || !photos.length}
                 onClick={() => setActive(photos[index - 1].id)}
               >
                 <ArrowLeft className="size-4" />
               </Button>
               <span className="text-[10px] tabular-nums text-muted-foreground">
-                {photos.length ? `${index + 1} / ${photos.length}` : "示例"}
+                {photos.length ? `${index + 1} / ${photos.length}` : t("示例")}
               </span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-11 rounded-full"
-                aria-label="下一张"
+                aria-label={t("下一张")}
                 disabled={index >= photos.length - 1}
                 onClick={() => setActive(photos[index + 1].id)}
               >
@@ -654,7 +682,7 @@ function App() {
         multiple
         hidden
         className="hidden"
-        aria-label="上传照片"
+        aria-label={t("上传照片")}
         onChange={(event) => {
           if (event.target.files) void upload(event.target.files);
           event.target.value = "";
@@ -662,7 +690,9 @@ function App() {
       />
       <FeatureBoundary>
         <Suspense
-          fallback={<div className="h-[68px]" aria-label="正在加载照片列表" />}
+          fallback={
+            <div className="h-[68px]" aria-label={t("正在加载照片列表")} />
+          }
         >
           <PhotoLibrary
             photos={photos}
@@ -687,7 +717,7 @@ function App() {
           />
         </Suspense>
       </FeatureBoundary>
-      <nav className="editor-modes" aria-label="创作模式">
+      <nav className="editor-modes" aria-label={t("创作模式")}>
         <ToggleGroup
           type="single"
           value={mode}
@@ -702,7 +732,7 @@ function App() {
             }
           }}
           className="w-full rounded-full border bg-muted/40 p-1"
-          aria-label="选择创作模式"
+          aria-label={t("选择创作模式")}
         >
           <ToggleGroupItem
             value="single"
@@ -710,7 +740,7 @@ function App() {
             className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"
           >
             <ImageIcon className="size-4" />
-            单张
+            {t("单张")}
           </ToggleGroupItem>
           <ToggleGroupItem
             value="collage"
@@ -718,7 +748,7 @@ function App() {
             className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"
           >
             <Images className="size-4" />
-            多张拼图
+            {t("多张拼图")}
           </ToggleGroupItem>
           <ToggleGroupItem
             value="contact"
@@ -726,7 +756,7 @@ function App() {
             className="h-11 flex-1 rounded-full! px-1 text-xs sm:text-sm"
           >
             <Film className="size-4" />
-            整卷展示
+            {t("整卷展示")}
           </ToggleGroupItem>
         </ToggleGroup>
       </nav>
@@ -742,16 +772,27 @@ function App() {
         >
           <SheetHeader className="pr-16">
             <SheetTitle>
-              {panel === "export" ? "导出照片" : "编辑设置"}
+              {panel === "export" ? t("导出照片") : t("编辑设置")}
             </SheetTitle>
             <SheetDescription>
               {panel === "export"
                 ? mode === "contact"
-                  ? `导出 ${pages.length} 卷 · ${target.length} 张照片`
+                  ? t("导出 {{value0}} 卷 \u00B7 {{value1}} 张照片", {
+                      value0: pages.length,
+                      value1: target.length,
+                      count: pages.length,
+                    })
                   : mode === "collage"
-                    ? `导出 ${pages.length} 页拼图 · ${target.length} 张照片`
-                    : `导出${scope === "all" ? "全部" : "选中"} ${target.length} 张照片`
-                : "调整后实时应用到预览"}
+                    ? t("导出 {{value0}} 页拼图 \u00B7 {{value1}} 张照片", {
+                        value0: pages.length,
+                        value1: target.length,
+                        count: pages.length,
+                      })
+                    : t("导出{{value0}} {{value1}} 张照片", {
+                        value0: scope === "all" ? t("全部") : t("选中"),
+                        value1: target.length,
+                      })
+                : t("调整后实时应用到预览")}
             </SheetDescription>
           </SheetHeader>
           <SheetClose asChild>
@@ -759,7 +800,7 @@ function App() {
               variant="ghost"
               size="icon"
               className="absolute top-3 right-3 size-11 rounded-full"
-              aria-label="关闭设置"
+              aria-label={t("关闭设置")}
             >
               <X />
             </Button>
@@ -781,22 +822,23 @@ function App() {
                 }}
                 variant="outline"
                 className="w-full"
-                aria-label="调整范围"
+                aria-label={t("调整范围")}
               >
                 <ToggleGroupItem
                   value="all"
                   className="h-11 flex-1 text-xs"
-                  aria-label="统一调整"
+                  aria-label={t("统一调整")}
                 >
                   <Layers />
-                  全部照片 {photos.length || ""}
+                  {t("全部照片")}
+                  {photos.length ? ` ${photos.length}` : ""}
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="selected"
                   className="h-11 flex-1 text-xs"
-                  aria-label="仅选中"
+                  aria-label={t("仅选中")}
                 >
-                  仅选中 {selected.length}
+                  {t("仅选中")} {selected.length}
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
@@ -804,14 +846,14 @@ function App() {
               <>
                 <section
                   className="export-dock space-y-3 px-4 pb-4"
-                  aria-label="导出照片"
+                  aria-label={t("导出照片")}
                 >
                   <div className="mx-auto grid max-w-7xl grid-cols-1 items-end gap-3">
                     <FeatureBoundary>
                       <Suspense
                         fallback={
                           <p className="py-3 text-xs text-muted-foreground">
-                            正在加载导出…
+                            {t("正在加载导出…")}
                           </p>
                         }
                       >
@@ -835,7 +877,7 @@ function App() {
                     </FeatureBoundary>
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {exportOption.description}
+                    {t(exportOption.description)}
                   </p>
                 </section>
               </>
@@ -851,15 +893,15 @@ function App() {
                 >
                   <TabsList
                     className="mx-3 h-12! w-[calc(100%-1.5rem)] rounded-lg"
-                    aria-label="胶片设置分类"
+                    aria-label={t("胶片设置分类")}
                   >
                     {mode === "contact" && (
                       <TabsTrigger
                         value="contact"
                         className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
                       >
-                        <Film className="size-3.5" />
-                        整卷
+                        <Film className="hidden size-3.5 sm:block" />
+                        {t("整卷")}
                       </TabsTrigger>
                     )}
                     {mode === "collage" && (
@@ -867,8 +909,8 @@ function App() {
                         value="layout"
                         className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
                       >
-                        <LayoutGrid className="size-3.5" />
-                        布局
+                        <LayoutGrid className="hidden size-3.5 sm:block" />
+                        {t("布局")}
                       </TabsTrigger>
                     )}
                     {mode !== "contact" && (
@@ -876,30 +918,30 @@ function App() {
                         value="film"
                         className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
                       >
-                        <Film className="size-3.5" />
-                        胶卷
+                        <Film className="hidden size-3.5 sm:block" />
+                        {t("胶卷")}
                       </TabsTrigger>
                     )}
                     <TabsTrigger
                       value="base"
                       className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
                     >
-                      <Palette className="size-3.5" />
-                      片基
+                      <Palette className="hidden size-3.5 sm:block" />
+                      {t("片基")}
                     </TabsTrigger>
                     <TabsTrigger
                       value="text"
                       className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
                     >
-                      <Type className="size-3.5" />
-                      文字
+                      <Type className="hidden size-3.5 sm:block" />
+                      {t("文字")}
                     </TabsTrigger>
                     <TabsTrigger
                       value="date"
                       className="min-h-11 gap-1 px-1 text-xs sm:text-sm"
                     >
-                      <CalendarDays className="size-3.5" />
-                      日期
+                      <CalendarDays className="hidden size-3.5 sm:block" />
+                      {t("日期")}
                     </TabsTrigger>
                   </TabsList>
                   {mode === "contact" && (
@@ -907,7 +949,7 @@ function App() {
                       <FeatureBoundary>
                         <Suspense
                           fallback={
-                            <p className="p-3 text-xs">正在加载设置…</p>
+                            <p className="p-3 text-xs">{t("正在加载设置…")}</p>
                           }
                         >
                           <ContactControls
@@ -934,7 +976,7 @@ function App() {
                       <FeatureBoundary>
                         <Suspense
                           fallback={
-                            <p className="p-3 text-xs">正在加载设置…</p>
+                            <p className="p-3 text-xs">{t("正在加载设置…")}</p>
                           }
                         >
                           <CollageControls
@@ -946,13 +988,17 @@ function App() {
                         </Suspense>
                       </FeatureBoundary>
                       <div className="px-3 pb-3 text-xs leading-relaxed text-muted-foreground">
-                        长按照片条拖动排序，或点选照片后用预览上方的箭头调整顺序。片基、文字、日期继续使用各张照片的设置。
+                        {t(
+                          "长按照片条拖动排序，或点选照片后用预览上方的箭头调整顺序。片基、文字、日期继续使用各张照片的设置。",
+                        )}
                       </div>
                     </TabsContent>
                   )}
                   <FeatureBoundary>
                     <Suspense
-                      fallback={<p className="p-3 text-xs">正在加载设置…</p>}
+                      fallback={
+                        <p className="p-3 text-xs">{t("正在加载设置…")}</p>
+                      }
                     >
                       <FilmSettings
                         shown={shown}
@@ -1005,7 +1051,7 @@ function App() {
             variant="ghost"
             size="icon"
             className="absolute top-0.5 right-1 size-11"
-            aria-label="关闭提示"
+            aria-label={t("关闭提示")}
             onClick={() => setMessage("")}
           >
             <X />

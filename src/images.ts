@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { Photo } from "./types/photo";
 import type { Settings } from "./film";
 import { readCaptureDate } from "./photo-date";
@@ -58,7 +59,7 @@ export function canvasBlob(
 ): Promise<Blob> {
   return new Promise((resolve, reject) =>
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(Error("无法生成图片"))),
+      (blob) => (blob ? resolve(blob) : reject(Error(t("无法生成图片")))),
       type,
       quality,
     ),
@@ -79,7 +80,7 @@ async function decode(file: Blob) {
 }
 function validateSize(width: number, height: number) {
   if (width < 1 || height < 1 || width * height > MAX_IMAGE_PIXELS)
-    throw Error("图片尺寸过大");
+    throw Error(t("图片尺寸过大"));
 }
 export async function loadPhoto(
   file: File,

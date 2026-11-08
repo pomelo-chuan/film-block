@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 export const exportOptions = [
   {
     id: "compact",
@@ -63,7 +64,7 @@ export function encodeExport(
     canvas.toBlob(
       (blob) => {
         if (!blob || blob.type !== option.mime) {
-          reject(new Error("无法使用所选格式导出"));
+          reject(Error(t("无法使用所选格式导出")));
           return;
         }
         resolve(blob);

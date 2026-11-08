@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useEffect, useRef, useState } from "react";
 type Draw = (
   canvas: HTMLCanvasElement,
@@ -21,7 +22,7 @@ export function useCanvasRenderer(draw: Draw, delay = 0) {
             canvas.width = buffer.width;
             canvas.height = buffer.height;
             const ctx = canvas.getContext("2d");
-            if (!ctx) throw Error("浏览器不支持 Canvas");
+            if (!ctx) throw Error(t("浏览器不支持 Canvas"));
             ctx.drawImage(buffer, 0, 0);
             setFailed(false);
           })

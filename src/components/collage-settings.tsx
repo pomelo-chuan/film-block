@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { canvasRatios, arrangements, type CollageSettings } from "@/collage";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -9,17 +11,21 @@ export function CollageControls({
   count,
   photo,
 }: {
-  photo?: { id: string; name: string };
+  photo?: {
+    id: string;
+    name: string;
+  };
   settings: CollageSettings;
   change: (patch: Partial<CollageSettings>) => void;
   count: number;
 }) {
+  useTranslation();
   return (
     <div className="space-y-4 p-3">
       {photo && (
         <div className="space-y-1 rounded-xl border p-3">
           <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="collage-photo-scale">当前照片大小</Label>
+            <Label htmlFor="collage-photo-scale">{t("当前照片大小")}</Label>
             <span className="text-xs tabular-nums">
               {settings.scales[photo.id] ?? 100}%
             </span>
@@ -32,7 +38,7 @@ export function CollageControls({
           </p>
           <Slider
             id="collage-photo-scale"
-            aria-label="当前照片大小"
+            aria-label={t("当前照片大小")}
             className="h-11"
             min={50}
             max={150}
@@ -50,13 +56,13 @@ export function CollageControls({
               change({ scales: { ...settings.scales, [photo.id]: 100 } })
             }
           >
-            恢复这张大小
+            {t("恢复这张大小")}
           </Button>
         </div>
       )}
 
       <div className="space-y-2">
-        <Label>画布比例</Label>
+        <Label>{t("画布比例")}</Label>
         <div className="grid grid-cols-4 gap-2">
           {canvasRatios.map((ratio) => (
             <Button
@@ -72,7 +78,7 @@ export function CollageControls({
         </div>
       </div>
       <div className="space-y-2">
-        <Label>排列方式</Label>
+        <Label>{t("排列方式")}</Label>
         <ToggleGroup
           type="single"
           value={settings.arrangement}
@@ -82,7 +88,7 @@ export function CollageControls({
           }}
           className="w-full"
           variant="outline"
-          aria-label="拼图排列"
+          aria-label={t("拼图排列")}
         >
           {Object.entries(arrangements).map(([value, label]) => (
             <ToggleGroupItem
@@ -90,13 +96,13 @@ export function CollageControls({
               value={value}
               className="h-11 flex-1 px-1 text-xs"
             >
-              {label}
+              {t(label)}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
       </div>
       <div className="space-y-2">
-        <Label>输出页数</Label>
+        <Label>{t("输出页数")}</Label>
         <ToggleGroup
           type="single"
           value={String(Math.min(settings.slides, Math.max(1, count)))}
@@ -105,7 +111,7 @@ export function CollageControls({
           }}
           className="w-full"
           variant="outline"
-          aria-label="输出页数"
+          aria-label={t("输出页数")}
         >
           {[1, 2, 3].map((n) => (
             <ToggleGroupItem
@@ -114,28 +120,28 @@ export function CollageControls({
               disabled={n > Math.max(1, count)}
               className="h-11 flex-1"
             >
-              {n} 页
+              {t("{{count}} 页", { count: n })}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
         <p className="text-[11px] text-muted-foreground">
-          按顺序均匀分页，每页最多 12 张；超过后自动增加页数。
+          {t("按顺序均匀分页，每页最多 12 张；超过后自动增加页数。")}
         </p>
       </div>
       {(
         [
-          { key: "spacing", label: "照片间距", max: 10 },
-          { key: "margin", label: "画布留白", max: 20 },
+          { key: "spacing", label: t("照片间距"), max: 10 },
+          { key: "margin", label: t("画布留白"), max: 20 },
         ] as const
       ).map(({ key, label, max }) => (
         <div key={key}>
           <div className="flex justify-between text-xs">
-            <Label htmlFor={`collage-${key}`}>{label}</Label>
+            <Label htmlFor={`collage-${key}`}>{t(label)}</Label>
             <span>{settings[key]}%</span>
           </div>
           <Slider
             id={`collage-${key}`}
-            aria-label={label}
+            aria-label={t(label)}
             className="h-11"
             min={0}
             max={max}
@@ -146,14 +152,16 @@ export function CollageControls({
         </div>
       ))}
       <div className="flex min-h-11 items-center justify-between gap-2">
-        <Label htmlFor="collage-bg">画布颜色</Label>
+        <Label htmlFor="collage-bg">{t("画布颜色")}</Label>
         <div className="flex items-center gap-2">
           {["#f7f5ef", "#ffffff", "#171815"].map((color) => (
             <Button
               key={color}
               variant="outline"
               className="size-11 rounded-full p-1"
-              aria-label={`画布颜色 ${color}`}
+              aria-label={t("画布颜色 {{value0}}", {
+                value0: color,
+              })}
               aria-pressed={settings.background === color}
               onClick={() => change({ background: color })}
             >
@@ -166,7 +174,7 @@ export function CollageControls({
           <input
             id="collage-bg"
             type="color"
-            aria-label="自定义画布颜色"
+            aria-label={t("自定义画布颜色")}
             className="size-11 rounded border bg-transparent p-1"
             value={settings.background}
             onChange={(event) => change({ background: event.target.value })}

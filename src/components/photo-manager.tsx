@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { Plus, X, Trash2 } from "lucide-react";
 import type { Photo } from "@/types/photo";
 import { Button } from "./ui/button";
@@ -42,6 +44,7 @@ export function PhotoManager({
   onRemove,
   returnFocus,
 }: Props) {
+  useTranslation();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -54,9 +57,12 @@ export function PhotoManager({
         className="mx-auto max-h-[85dvh] max-w-3xl gap-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)]"
       >
         <SheetHeader className="pr-16">
-          <SheetTitle>管理照片</SheetTitle>
+          <SheetTitle>{t("管理照片")}</SheetTitle>
           <SheetDescription>
-            已选择 {selected.length} / {photos.length} 张 · 选择照片后可单独调整
+            {t("已选择 {{selected}} / {{total}} 张 · 选择照片后可单独调整", {
+              selected: selected.length,
+              total: photos.length,
+            })}
           </SheetDescription>
         </SheetHeader>
         <SheetClose asChild>
@@ -64,7 +70,7 @@ export function PhotoManager({
             variant="ghost"
             size="icon"
             className="absolute top-3 right-3 size-11"
-            aria-label="关闭照片管理"
+            aria-label={t("关闭照片管理")}
           >
             <X />
           </Button>
@@ -72,7 +78,7 @@ export function PhotoManager({
         <Separator />
         <div className="flex items-center justify-between gap-3 px-4 py-2">
           <Button variant="ghost" className="h-11 px-2" onClick={onSelectAll}>
-            {selected.length === photos.length ? "取消全选" : "全选"}
+            {selected.length === photos.length ? t("取消全选") : t("全选")}
           </Button>
           <Button
             variant="outline"
@@ -81,7 +87,7 @@ export function PhotoManager({
             onClick={onAdd}
           >
             <Plus />
-            添加照片
+            {t("添加照片")}
           </Button>
         </div>
         <div className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-4">
@@ -97,7 +103,9 @@ export function PhotoManager({
                 <Button
                   variant="ghost"
                   className="h-32 w-full rounded-none p-3"
-                  aria-label={`预览 ${p.name}`}
+                  aria-label={t("预览 {{value0}}", {
+                    value0: p.name,
+                  })}
                   onClick={() => {
                     onChoose(p.id);
                     onOpenChange(false);
@@ -118,7 +126,9 @@ export function PhotoManager({
                     <Checkbox
                       id={`manage-${p.id}`}
                       className="size-5 shrink-0"
-                      aria-label={`选择 ${p.name}`}
+                      aria-label={t("选择 {{value0}}", {
+                        value0: p.name,
+                      })}
                       checked={selected.includes(p.id)}
                       onCheckedChange={() => onToggle(p.id)}
                     />
@@ -128,7 +138,9 @@ export function PhotoManager({
                     variant="ghost"
                     size="icon"
                     className="size-11 shrink-0 text-muted-foreground hover:text-destructive"
-                    aria-label={`删除 ${p.name}`}
+                    aria-label={t("删除 {{value0}}", {
+                      value0: p.name,
+                    })}
                     disabled={busy}
                     onClick={() => onRemove(p.id)}
                   >

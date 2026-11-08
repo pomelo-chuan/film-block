@@ -6,6 +6,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   timeout: 60_000,
   use: {
+    locale: "zh-CN",
     baseURL: "http://127.0.0.1:4175/film-block/",
     viewport: { width: 390, height: 844 },
     isMobile: true,

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import {
   FILM_SPECS,
   fontStack,
@@ -137,7 +138,7 @@ export async function renderContact(
   canvas.width = Math.max(1, Math.round(g.width * unit));
   canvas.height = Math.max(1, Math.round(g.height * unit));
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw Error("浏览器不支持 Canvas");
+  if (!ctx) throw Error(t("浏览器不支持 Canvas"));
   ctx.fillStyle = s.background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   if (!photos.length) return;
