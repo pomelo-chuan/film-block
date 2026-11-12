@@ -19,6 +19,7 @@ export const fontLabels: Record<(typeof fonts)[number], string> = {
   "Press Start 2P": "Press Start 2P",
 };
 export type Settings = {
+  frameEnabled: boolean;
   format: "135" | "120";
   color: string;
   ink: string;
@@ -32,6 +33,7 @@ export type Settings = {
   dateFormat: DateFormat;
 };
 export const defaults: Settings = {
+  frameEnabled: true,
   format: "135",
   color: "#171815",
   ink: "#dda84d",
@@ -100,8 +102,10 @@ export const SCAN_PAPER = "#f7f5ef";
 export function geometry(w: number, h: number, s: Settings) {
   const spec = FILM_SPECS[s.format],
     pxPerMm = Math.min(w, h) / spec.imageAcross;
-  const rail = ((spec.filmWidth - spec.imageAcross) * pxPerMm) / 2,
-    end = spec.endMargin * pxPerMm;
+  const rail = s.frameEnabled
+      ? ((spec.filmWidth - spec.imageAcross) * pxPerMm) / 2
+      : 0,
+    end = s.frameEnabled ? spec.endMargin * pxPerMm : 0;
   const vertical = h > w;
   return {
     rail,
@@ -116,7 +120,7 @@ export function geometry(w: number, h: number, s: Settings) {
   };
 }
 export function perforations(g: ReturnType<typeof geometry>, s: Settings) {
-  if (s.format === "120") return [];
+  if (!s.frameEnabled || s.format === "120") return [];
   const spec = FILM_SPECS["135"],
     p = g.pxPerMm;
   const length = g.vertical ? g.height : g.width,
@@ -188,11 +192,13 @@ export function renderFilm(
   canvas.height = g.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw Error(t("浏览器不支持 Canvas"));
-  ctx.fillStyle = s.color;
-  ctx.fillRect(0, 0, g.width, g.height);
+  if (s.frameEnabled) {
+    ctx.fillStyle = s.color;
+    ctx.fillRect(0, 0, g.width, g.height);
+  }
   ctx.drawImage(image, g.x, g.y, w, h);
   const { vertical, pxPerMm } = g;
-  if (s.texture === "grain") drawBaseTexture(ctx, w, h, g);
+  if (s.frameEnabled && s.texture === "grain") drawBaseTexture(ctx, w, h, g);
   ctx.fillStyle = SCAN_PAPER;
   for (const hole of perforations(g, s)) {
     ctx.beginPath();
@@ -201,7 +207,7 @@ export function renderFilm(
   }
   if (s.dateStampEnabled && captureDate)
     drawDateStamp(ctx, g.x, g.y, w, h, captureDate, s.dateFont, s.dateFormat);
-  if (!s.textEnabled) return;
+  if (!s.frameEnabled || !s.textEnabled) return;
   const font = (pxPerMm * 1.7 * s.fontSize) / 40,
     textInset = pxPerMm * (s.format === "135" ? 1 : 1.25);
   ctx.fillStyle = s.ink;

@@ -57,7 +57,7 @@ export function createExportJobs(
   return targets.map((photo, i) => ({
     name: `${String(i + 1).padStart(2, "0")}-${safeFilename(photo.name, option.extension)}`,
     draw: async (canvas, cancelled) => {
-      if (photo.settings.textEnabled)
+      if (photo.settings.frameEnabled && photo.settings.textEnabled)
         await loadFilmFont(photo.settings.font, photo.settings.text);
       if (photo.captureDate) await loadDateFont(photo.settings);
       if (cancelled()) return;

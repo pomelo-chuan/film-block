@@ -38,7 +38,7 @@ export const Preview = memo(function Preview({
   const draw = useCallback(
     async (canvas: HTMLCanvasElement, cancelled: () => boolean) => {
       const source = image ?? (await demoImage());
-      if (settings.textEnabled)
+      if (settings.frameEnabled && settings.textEnabled)
         await loadFilmFont(settings.font, settings.text);
       if (captureDate) await loadDateFont(settings);
       if (!cancelled())

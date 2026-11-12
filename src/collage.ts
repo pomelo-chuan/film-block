@@ -208,7 +208,7 @@ export async function renderCollage(
     if (cancelled()) return;
     const p = photos[i],
       rect = rects[i];
-    if (p.settings.textEnabled)
+    if (p.settings.frameEnabled && p.settings.textEnabled)
       await loadFilmFont(p.settings.font, p.settings.text);
     if (p.captureDate) await loadDateFont(p.settings);
     if (cancelled()) return;

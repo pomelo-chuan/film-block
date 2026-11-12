@@ -1,11 +1,75 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import * as dateStamp from "./date-stamp";
 import {
   defaults,
   geometry,
   safeFilename,
   perforations,
   FILM_SPECS,
+  renderFilm,
 } from "./film";
+afterEach(() => vi.restoreAllMocks());
+describe("optional film borders", () => {
+  for (const format of ["135", "120"] as const)
+    for (const [width, height] of [
+      [3600, 2400],
+      [2400, 3600],
+      [2400, 2400],
+    ])
+      it(`retains the entire ${width} × ${height} image without ${format} borders`, () => {
+        const settings = { ...defaults, format, frameEnabled: false };
+        const g = geometry(width, height, settings);
+        expect(g).toMatchObject({ width, height, x: 0, y: 0, rail: 0, end: 0 });
+        expect(perforations(g, settings)).toEqual([]);
+      });
+
+  it("omits all border artwork, respects the size limit and keeps the date stamp", () => {
+    const stamp = vi
+      .spyOn(dateStamp, "drawDateStamp")
+      .mockImplementation(() => {});
+    const context = {
+      drawImage: vi.fn(),
+      fillRect: vi.fn(),
+      fillText: vi.fn(),
+    };
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => context,
+    } as unknown as HTMLCanvasElement;
+    const image = {} as CanvasImageSource;
+    const date = {
+      year: 2024,
+      month: 6,
+      day: 15,
+      source: "DateTimeOriginal" as const,
+    };
+    renderFilm(
+      canvas,
+      image,
+      3600,
+      2400,
+      { ...defaults, frameEnabled: false, texture: "grain" },
+      0,
+      1800,
+      date,
+    );
+    expect([canvas.width, canvas.height]).toEqual([1800, 1200]);
+    expect(context.drawImage).toHaveBeenCalledWith(image, 0, 0, 1800, 1200);
+    expect(context.fillRect).not.toHaveBeenCalled();
+    expect(context.fillText).not.toHaveBeenCalled();
+    expect(stamp).toHaveBeenCalledWith(
+      context,
+      0,
+      0,
+      1800,
+      1200,
+      date,
+      defaults.dateFont,
+      defaults.dateFormat,
+    );
+  });
+});
 describe("fixed film dimensions", () => {
   it("maps a full 135 frame to 38 × 35 mm, retaining the whole 36 × 24 image", () => {
     const g = geometry(3600, 2400, defaults);

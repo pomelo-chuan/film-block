@@ -1028,6 +1028,24 @@ function App() {
               onChoose={choosePhoto}
               onToggle={togglePhoto}
               onRemove={remove}
+              onFrameChange={
+                mode === "contact"
+                  ? undefined
+                  : (id, enabled) =>
+                      setPhotos((items) =>
+                        items.map((photo) =>
+                          photo.id === id
+                            ? {
+                                ...photo,
+                                settings: {
+                                  ...photo.settings,
+                                  frameEnabled: enabled,
+                                },
+                              }
+                            : photo,
+                        ),
+                      )
+              }
               returnFocus={() => {
                 (!managerTrigger.current?.disabled
                   ? managerTrigger.current

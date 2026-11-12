@@ -34,6 +34,19 @@ export function FilmSettings({
   return (
     <>
       <TabsContent value="film" className="space-y-2 p-3">
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <Label
+            htmlFor="frame-enabled"
+            className="flex min-h-11 flex-1 cursor-pointer items-center"
+          >
+            {t("添加胶卷边框")}
+          </Label>
+          <Switch
+            id="frame-enabled"
+            checked={shown.frameEnabled}
+            onCheckedChange={(checked) => change({ frameEnabled: checked })}
+          />
+        </div>
         <div className="grid grid-cols-2 gap-2">
           {(["135", "120"] as const).map((f) => (
             <Button

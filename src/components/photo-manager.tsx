@@ -5,6 +5,7 @@ import type { Photo } from "@/types/photo";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
+import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
 import {
   Sheet,
@@ -28,6 +29,7 @@ type Props = {
   onChoose: (id: string) => void;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
+  onFrameChange?: (id: string, enabled: boolean) => void;
   returnFocus: () => void;
 };
 export function PhotoManager({
@@ -42,6 +44,7 @@ export function PhotoManager({
   onChoose,
   onToggle,
   onRemove,
+  onFrameChange,
   returnFocus,
 }: Props) {
   useTranslation();
@@ -147,6 +150,27 @@ export function PhotoManager({
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
+                {onFrameChange && (
+                  <div className="flex min-h-11 items-center justify-between gap-2 border-t px-3">
+                    <Label
+                      htmlFor={`frame-${p.id}`}
+                      className="min-w-0 flex-1 cursor-pointer py-3 text-xs"
+                    >
+                      {t("胶卷边框")}
+                    </Label>
+                    <Switch
+                      id={`frame-${p.id}`}
+                      aria-label={t("为 {{value0}} 添加胶卷边框", {
+                        value0: p.name,
+                      })}
+                      checked={p.settings.frameEnabled}
+                      disabled={busy}
+                      onCheckedChange={(checked) =>
+                        onFrameChange(p.id, checked)
+                      }
+                    />
+                  </div>
+                )}
               </article>
             ))}
           </div>

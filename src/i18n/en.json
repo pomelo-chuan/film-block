@@ -1,4 +1,7 @@
 {
+  "添加胶卷边框": "Add film border",
+  "胶卷边框": "Film border",
+  "为 {{value0}} 添加胶卷边框": "Add film border to {{value0}}",
   " {{value0}} 张": " ({{value0}})",
   " · 右下角": " · bottom right",
   "120 · 12 张 / 卷": "120 · 12 frames",
