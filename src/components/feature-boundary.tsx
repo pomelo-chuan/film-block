@@ -4,6 +4,7 @@ import { Component, type ReactNode } from "react";
 export class FeatureBoundary extends Component<
   {
     children: ReactNode;
+    fallback?: ReactNode;
   },
   {
     failed: boolean;
@@ -14,12 +15,13 @@ export class FeatureBoundary extends Component<
     return { failed: true };
   }
   render() {
-    return this.state.failed ? (
-      <p role="alert" className="p-3 text-xs text-muted-foreground">
-        {t("此功能暂时无法加载，请检查网络后刷新重试。")}
-      </p>
-    ) : (
-      this.props.children
+    if (!this.state.failed) return this.props.children;
+    return (
+      this.props.fallback ?? (
+        <p role="alert" className="p-3 text-xs text-muted-foreground">
+          {t("此功能暂时无法加载，请检查网络后刷新重试。")}
+        </p>
+      )
     );
   }
 }
