@@ -50,9 +50,9 @@ import {
 } from "./contact";
 import { ContactPreview } from "@/components/contact-preview";
 import { collageDefaults, collagePages, type CollageSettings } from "./collage";
-import { PreviewCarousel } from "@/components/preview-carousel";
 import { CollagePreview } from "@/components/collage-preview";
 import { Preview } from "@/components/film-preview";
+import { PhotoLibrary } from "@/components/photo-library";
 import type { Photo } from "@/types/photo";
 import { loadPhoto, releasePhoto } from "./images";
 import { Button } from "@/components/ui/button";
@@ -90,14 +90,14 @@ const FilmSettings = lazy(() =>
     default: module.FilmSettings,
   })),
 );
-const PhotoLibrary = lazy(() =>
-  import("@/components/photo-library").then((module) => ({
-    default: module.PhotoLibrary,
-  })),
-);
 const PhotoManager = lazy(() =>
   import("@/components/photo-manager").then((module) => ({
     default: module.PhotoManager,
+  })),
+);
+const PreviewCarousel = lazy(() =>
+  import("@/components/preview-carousel").then((module) => ({
+    default: module.PreviewCarousel,
   })),
 );
 type EditorPanel =
@@ -515,29 +515,44 @@ function App() {
         >
           {mode === "contact" ? (
             pages.length ? (
-              <PreviewCarousel
-                key="contact"
-                ids={pages.map((_, i) => `roll-${i}`)}
-                index={pageIndex}
-                onSelect={choosePage}
-                render={(i) => (
-                  <ContactPreview
-                    photos={pages[i]}
-                    settings={contact}
-                    base={settings}
-                    index={i}
-                    active={active}
-                    onSelect={choosePhoto}
-                    label={
-                      i === pageIndex
-                        ? t("整卷展示预览")
-                        : t("第 {{value0}} 卷预览", {
-                            value0: i + 1,
-                          })
-                    }
-                  />
-                )}
-              />
+              <Suspense
+                fallback={
+                  <div className="photo-mat">
+                    <ContactPreview
+                      photos={pages[pageIndex]}
+                      settings={contact}
+                      base={settings}
+                      index={pageIndex}
+                      active={active}
+                      onSelect={choosePhoto}
+                    />
+                  </div>
+                }
+              >
+                <PreviewCarousel
+                  key="contact"
+                  ids={pages.map((_, i) => `roll-${i}`)}
+                  index={pageIndex}
+                  onSelect={choosePage}
+                  render={(i) => (
+                    <ContactPreview
+                      photos={pages[i]}
+                      settings={contact}
+                      base={settings}
+                      index={i}
+                      active={active}
+                      onSelect={choosePhoto}
+                      label={
+                        i === pageIndex
+                          ? t("整卷展示预览")
+                          : t("第 {{value0}} 卷预览", {
+                              value0: i + 1,
+                            })
+                      }
+                    />
+                  )}
+                />
+              </Suspense>
             ) : (
               <div className="photo-mat">
                 <ContactPreview
@@ -552,26 +567,38 @@ function App() {
             )
           ) : mode === "collage" ? (
             pages.length ? (
-              <PreviewCarousel
-                key="collage"
-                ids={pages.map((_, i) => `page-${i}`)}
-                index={pageIndex}
-                onSelect={choosePage}
-                render={(i) => (
-                  <CollagePreview
-                    photos={pages[i]}
-                    allPhotos={photos}
-                    settings={collage}
-                    label={
-                      i === pageIndex
-                        ? t("多张拼图预览")
-                        : t("第 {{value0}} 页拼图预览", {
-                            value0: i + 1,
-                          })
-                    }
-                  />
-                )}
-              />
+              <Suspense
+                fallback={
+                  <div className="photo-mat">
+                    <CollagePreview
+                      photos={pages[pageIndex]}
+                      allPhotos={photos}
+                      settings={collage}
+                    />
+                  </div>
+                }
+              >
+                <PreviewCarousel
+                  key="collage"
+                  ids={pages.map((_, i) => `page-${i}`)}
+                  index={pageIndex}
+                  onSelect={choosePage}
+                  render={(i) => (
+                    <CollagePreview
+                      photos={pages[i]}
+                      allPhotos={photos}
+                      settings={collage}
+                      label={
+                        i === pageIndex
+                          ? t("多张拼图预览")
+                          : t("第 {{value0}} 页拼图预览", {
+                              value0: i + 1,
+                            })
+                      }
+                    />
+                  )}
+                />
+              </Suspense>
             ) : (
               <div className="photo-mat">
                 <CollagePreview
@@ -582,21 +609,33 @@ function App() {
               </div>
             )
           ) : photos.length ? (
-            <PreviewCarousel
-              key="single"
-              ids={photos.map((photo) => photo.id)}
-              index={index}
-              onSelect={(i) => {
-                if (photos[i]) setActive(photos[i].id);
-              }}
-              render={(i) => (
-                <Preview
-                  photo={photos[i]}
-                  settings={photos[i].settings}
-                  index={i}
-                />
-              )}
-            />
+            <Suspense
+              fallback={
+                <div className="photo-mat">
+                  <Preview
+                    photo={photos[index]}
+                    settings={photos[index].settings}
+                    index={index}
+                  />
+                </div>
+              }
+            >
+              <PreviewCarousel
+                key="single"
+                ids={photos.map((photo) => photo.id)}
+                index={index}
+                onSelect={(i) => {
+                  if (photos[i]) setActive(photos[i].id);
+                }}
+                render={(i) => (
+                  <Preview
+                    photo={photos[i]}
+                    settings={photos[i].settings}
+                    index={i}
+                  />
+                )}
+              />
+            </Suspense>
           ) : (
             <div className="photo-mat">
               <Preview settings={shown} index={index} />
