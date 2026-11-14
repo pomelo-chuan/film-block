@@ -54,7 +54,7 @@ import { CollagePreview } from "@/components/collage-preview";
 import { Preview } from "@/components/film-preview";
 import { PhotoLibrary } from "@/components/photo-library";
 import type { Photo } from "@/types/photo";
-import { loadPhoto, releasePhoto } from "./images";
+import { loadPhoto, releasePhoto, rotatePhoto } from "./images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -250,6 +250,26 @@ function App() {
           )
         : "",
     );
+  }
+  async function rotate(id: string, direction: -1 | 1) {
+    if (busy) return;
+    const photo = photos.find((p) => p.id === id);
+    if (!photo) return;
+    setBusy(true);
+    try {
+      const rotated = await rotatePhoto(photo, direction);
+      resources.current.set(id, rotated);
+      setPhotos((items) =>
+        items.map((p) =>
+          p.id === id ? { ...rotated, settings: p.settings } : p,
+        ),
+      );
+      releasePhoto(photo);
+    } catch {
+      setMessage(t("旋转失败，请重试"));
+    } finally {
+      setBusy(false);
+    }
   }
   function remove(id: string) {
     const p = photos.find((p) => p.id === id);
@@ -1106,6 +1126,7 @@ function App() {
               onChoose={choosePhoto}
               onToggle={togglePhoto}
               onRemove={remove}
+              onRotate={(id, direction) => void rotate(id, direction)}
               onFrameChange={
                 mode === "contact"
                   ? undefined

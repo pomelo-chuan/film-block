@@ -68,9 +68,51 @@ export function canvasBlob(
 async function decode(file: Blob) {
   const url = URL.createObjectURL(file),
     image = new Image();
+  image.style.imageOrientation = "from-image";
   image.src = url;
   try {
     await image.decode();
+    // Bake EXIF rotations and mirrors into pixels once, so downstream canvas
+    // rendering no longer depends on how an image element exposes orientation.
+    const orientation = await (
+      await import("exifr")
+    )
+      .orientation(file)
+      .catch(() => 1);
+    if (
+      orientation &&
+      orientation !== 1 &&
+      typeof createImageBitmap === "function"
+    ) {
+      const bitmap = await createImageBitmap(file, {
+        imageOrientation: "from-image",
+      });
+      try {
+        validateSize(bitmap.width, bitmap.height);
+        const canvas = document.createElement("canvas");
+        try {
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
+          const normalizedUrl = URL.createObjectURL(
+            await canvasBlob(canvas, "image/png"),
+          );
+          image.src = normalizedUrl;
+          try {
+            await image.decode();
+          } catch (error) {
+            URL.revokeObjectURL(normalizedUrl);
+            throw error;
+          }
+          URL.revokeObjectURL(url);
+          return { image, url: normalizedUrl };
+        } finally {
+          canvas.width = canvas.height = 0;
+        }
+      } finally {
+        bitmap.close();
+      }
+    }
     return { image, url };
   } catch (error) {
     image.src = "";
@@ -149,9 +191,47 @@ export async function withPhotoImage<T>(
     return draw(photo.image);
   const source = await decode(photo.file);
   try {
-    return await draw(source.image);
+    if (!photo.rotation) return await draw(source.image);
+    const rotated = await rotatedImage(source.image, photo.rotation);
+    try {
+      return await draw(rotated.image);
+    } finally {
+      rotated.image.src = "";
+      URL.revokeObjectURL(rotated.url);
+    }
   } finally {
     source.image.src = "";
     URL.revokeObjectURL(source.url);
   }
+}
+
+async function rotatedImage(image: HTMLImageElement, degrees: number) {
+  const canvas = document.createElement("canvas");
+  const swap = Math.abs(degrees % 180) === 90;
+  canvas.width = swap ? image.naturalHeight : image.naturalWidth;
+  canvas.height = swap ? image.naturalWidth : image.naturalHeight;
+  try {
+    const ctx = canvas.getContext("2d")!;
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((degrees * Math.PI) / 180);
+    ctx.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+    return await decode(await canvasBlob(canvas, "image/png"));
+  } finally {
+    canvas.width = canvas.height = 0;
+  }
+}
+
+export async function rotatePhoto(
+  photo: Photo,
+  direction: -1 | 1,
+): Promise<Photo> {
+  const preview = await rotatedImage(photo.image, direction * 90);
+  return {
+    ...photo,
+    image: preview.image,
+    url: preview.url,
+    width: photo.height,
+    height: photo.width,
+    rotation: ((photo.rotation ?? 0) + direction * 90 + 360) % 360,
+  };
 }

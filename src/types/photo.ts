@@ -7,6 +7,7 @@ export type Photo = {
   file: File;
   image: HTMLImageElement;
   url: string;
+  rotation?: number;
   width: number;
   height: number;
   captureDate: CaptureDate | null;

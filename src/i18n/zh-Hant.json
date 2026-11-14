@@ -224,5 +224,10 @@
   "{{count}} 页_other": "{{count}} 頁",
   "{{count}} 张": "{{count}} 張",
   "{{count}} 张_one": "{{count}} 張",
-  "{{count}} 张_other": "{{count}} 張"
+  "{{count}} 张_other": "{{count}} 張",
+  "左转": "左轉",
+  "右转": "右轉",
+  "向左旋转 {{value0}}": "向左旋轉 {{value0}}",
+  "向右旋转 {{value0}}": "向右旋轉 {{value0}}",
+  "旋转失败，请重试": "旋轉失敗，請重試"
 }

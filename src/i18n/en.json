@@ -224,5 +224,10 @@
   "{{count}} 页_other": "{{count}} pages",
   "{{count}} 张": "{{count}} frames",
   "{{count}} 张_one": "{{count}} frame",
-  "{{count}} 张_other": "{{count}} frames"
+  "{{count}} 张_other": "{{count}} frames",
+  "左转": "Rotate left",
+  "右转": "Rotate right",
+  "向左旋转 {{value0}}": "Rotate {{value0}} left",
+  "向右旋转 {{value0}}": "Rotate {{value0}} right",
+  "旋转失败，请重试": "Rotation failed. Please try again."
 }

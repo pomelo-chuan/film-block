@@ -1,6 +1,6 @@
 import { t } from "@/i18n";
 import { useTranslation } from "react-i18next";
-import { Plus, X, Trash2 } from "lucide-react";
+import { Plus, X, Trash2, RotateCwSquare } from "lucide-react";
 import type { Photo } from "@/types/photo";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -29,6 +29,7 @@ type Props = {
   onChoose: (id: string) => void;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
+  onRotate: (id: string, direction: -1 | 1) => void;
   onFrameChange?: (id: string, enabled: boolean) => void;
   returnFocus: () => void;
 };
@@ -44,6 +45,7 @@ export function PhotoManager({
   onChoose,
   onToggle,
   onRemove,
+  onRotate,
   onFrameChange,
   returnFocus,
 }: Props) {
@@ -137,6 +139,17 @@ export function PhotoManager({
                     />
                     <span className="min-w-0 truncate text-xs">{p.name}</span>
                   </Label>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-11 shrink-0 text-muted-foreground"
+                    disabled={busy}
+                    title={t("右转")}
+                    aria-label={t("向右旋转 {{value0}}", { value0: p.name })}
+                    onClick={() => onRotate(p.id, 1)}
+                  >
+                    <RotateCwSquare className="size-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
